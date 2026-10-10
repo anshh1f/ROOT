@@ -242,3 +242,53 @@ export function generateItinerary({
     }
   };
 }
+
+/**
+ * Recalculate itinerary budget breakdown based on edited schedule activities
+ */
+export function recalculateItineraryBudget(itinerary, updatedSchedule) {
+  if (!itinerary || !itinerary.budgetSummary) return itinerary?.budgetSummary;
+
+  const numTravellers = itinerary.travellers || 1;
+  const days = itinerary.durationDays || updatedSchedule.length || 1;
+  const userTotalBudget = itinerary.budgetSummary.userTotalBudget || 0;
+
+  const totalActivityCostPerPerson = updatedSchedule.reduce((daySum, day) => {
+    return daySum + (day.activities || []).reduce((actSum, act) => actSum + (Number(act.costINR) || 0), 0);
+  }, 0);
+
+  const activitiesTotal = totalActivityCostPerPerson * numTravellers;
+  const accommodationTotal = itinerary.budgetSummary.breakdown?.accommodation?.cost || 0;
+  const foodTotal = itinerary.budgetSummary.breakdown?.food?.cost || (550 * days * numTravellers);
+  const transportTotal = itinerary.budgetSummary.breakdown?.transport?.cost || (800 * days);
+
+  const totalEstimatedCost = accommodationTotal + activitiesTotal + foodTotal + transportTotal;
+  const budgetDifference = userTotalBudget - totalEstimatedCost;
+  const isOverBudget = budgetDifference < 0;
+  const deficitAmount = isOverBudget ? Math.abs(budgetDifference) : 0;
+  const remainingBudget = isOverBudget ? 0 : budgetDifference;
+
+  return {
+    ...itinerary.budgetSummary,
+    totalEstimatedCost,
+    remainingBudget,
+    isOverBudget,
+    deficitAmount,
+    breakdown: {
+      ...itinerary.budgetSummary.breakdown,
+      activities: {
+        label: 'Activities, Entry & Workshops',
+        cost: activitiesTotal,
+        note: `Updated entries for ${numTravellers} traveller${numTravellers > 1 ? 's' : ''}`
+      }
+    }
+  };
+}
+
+/**
+ * Get verified community replacement options for a destination
+ */
+export function getAvailableDestinationActivities(destinationId) {
+  return getApprovedPlannerEntries(destinationId);
+}
+

@@ -191,6 +191,20 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Update itinerary after user customizes and saves changes
+  const handleUpdateItinerary = (updatedItinerary) => {
+    setActiveItinerary(updatedItinerary);
+    setSavedTrips((prev) => {
+      const exists = prev.find((t) => t.id === updatedItinerary.id);
+      if (exists) {
+        const updated = prev.map((t) => (t.id === updatedItinerary.id ? updatedItinerary : t));
+        localStorage.setItem('roots_saved_trips', JSON.stringify(updated));
+        return updated;
+      }
+      return prev;
+    });
+  };
+
   const isCurrentTripSaved = activeItinerary
     ? savedTrips.some((t) => t.id === activeItinerary.id)
     : false;
@@ -240,6 +254,7 @@ function App() {
             onEditPreferences={handleEditPreferences}
             onRegenerate={handleRegenerate}
             onSaveTrip={handleSaveTrip}
+            onUpdateItinerary={handleUpdateItinerary}
             isAlreadySaved={isCurrentTripSaved}
             onFindBuddies={() => {
               setCurrentView('connect');
