@@ -92,29 +92,50 @@
 .brand-text-group {
   display: flex;
   flex-direction: column;
+  justify-content: center;
+}
+
+.brand-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .brand-name {
-  font-size: 1.45rem;
+  font-size: 1.42rem;
   font-weight: 800;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.025em;
   color: var(--deep-blue);
   line-height: 1.1;
 }
 
-.brand-badge-tag {
-  font-size: 0.68rem;
+.community-prototype-badge {
+  font-size: 0.62rem;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
   color: var(--primary-blue);
+  background-color: var(--pale-blue);
+  border: 1px solid rgba(52, 120, 246, 0.22);
+  padding: 1.5px 7px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.brand-tagline {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-top: 2px;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
 }
 
 /* Modern App-Style Segmented Tab Track (Desktop) */
 .desktop-tab-track {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   background-color: rgba(240, 246, 255, 0.75);
   border: 1px solid rgba(52, 120, 246, 0.16);
   border-radius: var(--radius-full);
@@ -125,12 +146,13 @@
 .desktop-tab-item {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 14px;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
   border-radius: var(--radius-full);
   border: 1px solid transparent;
   background-color: transparent;
-  color: var(--secondary-text);
+  color: #475569;
   font-size: 0.88rem;
   font-weight: 600;
   line-height: 1;
@@ -149,30 +171,39 @@
 
 .desktop-tab-item:hover {
   color: var(--deep-blue);
-  background-color: rgba(255, 255, 255, 0.7);
+  background-color: rgba(234, 243, 255, 0.6);
+  border-color: rgba(52, 120, 246, 0.15);
 }
 
 .desktop-tab-item:hover .tab-icon {
-  color: var(--primary-blue);
+  color: var(--deep-blue);
 }
 
-/* Active Tab: pale blue rounded background with blue icon and text */
+/* Active Destination: clear pale-blue background with deep-blue text and icon */
 .desktop-tab-item.active-tab {
-  background-color: var(--pale-blue);
+  background-color: var(--pale-blue); /* #EAF3FF */
   border-color: rgba(52, 120, 246, 0.28);
-  color: var(--deep-blue);
+  color: var(--deep-blue); /* #123B73 */
   font-weight: 700;
   box-shadow: 0 2px 6px rgba(52, 120, 246, 0.12);
 }
 
 .desktop-tab-item.active-tab .tab-icon {
-  color: var(--primary-blue);
-  transform: scale(1.05);
+  color: var(--deep-blue); /* #123B73 */
+  transform: scale(1.04);
 }
 
 .desktop-tab-item:focus-visible {
   outline: 2px solid var(--primary-blue);
   outline-offset: 2px;
+}
+
+.tab-label-full {
+  display: inline;
+}
+
+.tab-label-compact {
+  display: none;
 }
 
 .tab-badge-pill {
@@ -190,11 +221,19 @@
   line-height: 1;
 }
 
-@media (min-width: 769px) and (max-width: 960px) {
+@media (min-width: 769px) and (max-width: 1120px) {
   .desktop-tab-item {
-    padding: 6px 9px;
+    padding: 0 10px;
     font-size: 0.82rem;
-    gap: 5px;
+    gap: 6px;
+  }
+
+  .tab-label-full {
+    display: none;
+  }
+
+  .tab-label-compact {
+    display: inline;
   }
 }
 
@@ -249,8 +288,25 @@
 .mobile-menu-drawer {
   background-color: var(--white);
   border-bottom: 1px solid var(--border-color);
-  padding: 20px 24px;
+  padding: 16px 20px 24px;
   box-shadow: var(--shadow-md);
+}
+
+.mobile-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border-color);
+  gap: 8px;
+}
+
+.mobile-drawer-tagline {
+  font-size: 0.76rem;
+  color: var(--secondary-text);
+  font-weight: 500;
+  font-style: italic;
 }
 
 .mobile-nav-list {
@@ -7366,8 +7422,8 @@ input, select, textarea, button {
   }
 
   .mobile-bottom-tab.active {
-    color: var(--primary-blue);
-    background-color: rgba(52, 120, 246, 0.08);
+    color: var(--deep-blue);
+    background-color: var(--pale-blue);
   }
 
   .mobile-bottom-tab.active .bottom-tab-title {
@@ -7376,7 +7432,7 @@ input, select, textarea, button {
   }
 
   .mobile-bottom-tab.active .bottom-icon {
-    color: var(--primary-blue);
+    color: var(--deep-blue);
     transform: scale(1.08);
   }
 
@@ -7423,11 +7479,20 @@ input, select, textarea, button {
   }
 
   .brand-name {
-    font-size: 1.28rem;
+    font-size: 1.25rem;
   }
 
-  .brand-badge-tag {
-    font-size: 0.6rem;
+  .community-prototype-badge {
+    font-size: 0.58rem;
+    padding: 1px 6px;
+  }
+
+  .brand-tagline {
+    font-size: 0.62rem;
+    max-width: 175px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .mobile-toggle-btn {
@@ -7754,8 +7819,21 @@ input, select, textarea, button {
   }
 }
 
-/* Compact Tab Bar for Small Phones (320px - 360px width) */
+/* Compact Tab Bar & Header for Small Phones (320px - 360px width) */
 @media (max-width: 360px) {
+  .brand-name {
+    font-size: 1.15rem;
+  }
+
+  .brand-tagline {
+    display: none;
+  }
+
+  .community-prototype-badge {
+    font-size: 0.54rem;
+    padding: 1px 5px;
+  }
+
   .mobile-bottom-nav {
     padding: 3px 0;
     padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
@@ -7764,7 +7842,7 @@ input, select, textarea, button {
   .mobile-bottom-tab {
     padding: 3px 0 2px;
     min-height: 46px;
-    max-width: 53px;
+    max-width: 64px;
   }
 
   .bottom-tab-icon-wrap {
@@ -7777,8 +7855,8 @@ input, select, textarea, button {
   }
 
   .bottom-tab-title {
-    font-size: 0.58rem;
-    letter-spacing: -0.025em;
+    font-size: 0.62rem;
+    letter-spacing: -0.015em;
   }
 }
 

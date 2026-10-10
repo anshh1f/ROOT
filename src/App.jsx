@@ -197,69 +197,7 @@ function App() {
 
   return (
     <div className="roots-app">
-      {/* Prototype Transparent Notification Header */}
-      <div className="prototype-top-banner">
-        <div className="container banner-inner">
-          <div className="banner-message">
-            <span className="banner-tag">ROOTS Community Prototype</span>
-            <span>
-              Community-powered travel planner & buddy matching • Demo profiles & verified local places
-            </span>
-          </div>
-          <div className="banner-nav-quick">
-            <button
-              type="button"
-              className={`banner-quick-btn ${currentView === 'home' ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentView('home');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            >
-              Homepage
-            </button>
-            <button
-              type="button"
-              className={`banner-quick-btn ${currentView === 'community' ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentView('community');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            >
-              ROOTS Community
-            </button>
-            <button
-              type="button"
-              className={`banner-quick-btn ${currentView === 'lingua' ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentView('lingua');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            >
-              ROOTS Lingua
-            </button>
-            <button
-              type="button"
-              className={`banner-quick-btn ${currentView === 'stay' ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentView('stay');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            >
-              ROOTS Stay
-            </button>
-            <button
-              type="button"
-              className={`banner-quick-btn ${currentView === 'connect' ? 'active' : ''}`}
-              onClick={() => {
-                setCurrentView('connect');
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-            >
-              ROOTS Connect Hub {incomingRequestsCount > 0 ? `(${incomingRequestsCount} new)` : ''}
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* 1. Modern Unified Navigation Header */}
 
       {/* 1. Navigation Bar */}
       <Navbar

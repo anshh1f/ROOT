@@ -1,11 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Compass,
-  Calendar,
-  Languages,
-  BookOpen,
-  Users,
   Home,
+  BookOpen,
+  Languages,
+  BedDouble,
+  Users,
   Menu,
   X,
   BookmarkCheck
@@ -19,112 +18,59 @@ export function Navbar({
   incomingRequestsCount
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [activeHomeSection, setActiveHomeSection] = useState('explore');
-
-  // Sync scroll on homepage to update active tab between 'explore' and 'plan'
-  useEffect(() => {
-    if (currentView === 'home') {
-      const handleScroll = () => {
-        const planEl = document.getElementById('plan-trip');
-        if (planEl) {
-          const rect = planEl.getBoundingClientRect();
-          if (rect.top <= 200 && rect.bottom >= 100) {
-            setActiveHomeSection('plan');
-          } else if (window.scrollY < 380) {
-            setActiveHomeSection('explore');
-          }
-        }
-      };
-
-      window.addEventListener('scroll', handleScroll, { passive: true });
-      return () => window.removeEventListener('scroll', handleScroll);
-    }
-  }, [currentView]);
 
   const navTabs = [
     {
-      id: 'explore',
-      name: 'Explore',
-      shortName: 'Explore',
-      href: '#explore',
+      id: 'home',
+      name: 'Home',
+      shortName: 'Home',
       view: 'home',
-      icon: Compass
-    },
-    {
-      id: 'plan',
-      name: 'Plan a Trip',
-      shortName: 'Plan',
-      href: '#plan-trip',
-      view: 'home',
-      icon: Calendar
-    },
-    {
-      id: 'lingua',
-      name: 'Lingua',
-      shortName: 'Lingua',
-      href: '#lingua',
-      view: 'lingua',
-      icon: Languages
+      icon: Home
     },
     {
       id: 'community',
-      name: 'Community',
+      name: 'ROOTS Community',
       shortName: 'Community',
-      href: '#community',
       view: 'community',
       icon: BookOpen
     },
     {
-      id: 'connect',
-      name: 'Connect',
-      shortName: 'Connect',
-      href: '#connect',
-      view: 'connect',
-      icon: Users,
-      badge: incomingRequestsCount
+      id: 'lingua',
+      name: 'ROOTS Lingua',
+      shortName: 'Lingua',
+      view: 'lingua',
+      icon: Languages
     },
     {
       id: 'stay',
-      name: 'Stay',
+      name: 'ROOTS Stay',
       shortName: 'Stay',
-      href: '#stay',
       view: 'stay',
-      icon: Home
+      icon: BedDouble
+    },
+    {
+      id: 'connect',
+      name: 'ROOTS Connect Hub',
+      shortName: 'Connect',
+      view: 'connect',
+      icon: Users,
+      badge: incomingRequestsCount
     }
   ];
 
-  // Resolve active tab state accurately
+  // Resolve active tab state based on the actual current route
   const isTabActive = (tab) => {
-    if (currentView === 'lingua') return tab.id === 'lingua';
-    if (currentView === 'community') return tab.id === 'community';
-    if (currentView === 'connect') return tab.id === 'connect';
-    if (currentView === 'stay') return tab.id === 'stay';
-    if (currentView === 'results') return tab.id === 'plan';
-    if (currentView === 'home') {
-      return tab.id === activeHomeSection;
+    if (currentView === 'home' || currentView === 'results') {
+      return tab.id === 'home';
     }
-    return false;
+    return tab.id === currentView;
   };
 
   const handleTabClick = (tab) => {
     setMobileMenuOpen(false);
-
-    if (tab.view === 'home') {
-      setActiveHomeSection(tab.id);
-      if (currentView !== 'home') {
-        if (onNavigate) onNavigate('home');
-        setTimeout(() => {
-          const el = document.querySelector(tab.href);
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }, 120);
-      } else {
-        const el = document.querySelector(tab.href);
-        if (el) el.scrollIntoView({ behavior: 'smooth' });
-      }
-      return;
+    if (onNavigate) {
+      onNavigate(tab.view);
     }
-
-    if (onNavigate) onNavigate(tab.view);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -132,33 +78,35 @@ export function Navbar({
     <>
       <header className="navbar-root">
         <div className="container nav-container">
-          {/* ROOTS Brand Logo */}
+          {/* ROOTS Brand Logo & Tagline */}
           <a
             href="#"
             className="brand-logo"
-            aria-label="ROOTS Homepage"
+            aria-label="ROOTS Homepage - Discover the place beyond the places"
             onClick={(e) => {
               e.preventDefault();
-              setActiveHomeSection('explore');
               if (onNavigate) onNavigate('home');
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
           >
             <div className="brand-icon-wrapper">
-              <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
+              <svg width="28" height="28" viewBox="0 0 100 100" fill="none" aria-hidden="true">
                 <circle cx="50" cy="50" r="46" fill="#123B73" />
                 <path d="M50 16 L58 42 L84 50 L58 58 L50 84 L42 58 L16 50 L42 42 Z" fill="#3478F6" />
                 <circle cx="50" cy="50" r="9" fill="#FFFFFF" />
               </svg>
             </div>
             <div className="brand-text-group">
-              <span className="brand-name">ROOTS</span>
-              <span className="brand-badge-tag">Community Travel</span>
+              <div className="brand-title-row">
+                <span className="brand-name">ROOTS</span>
+                <span className="community-prototype-badge">Community Prototype</span>
+              </div>
+              <span className="brand-tagline">Discover the place beyond the places.</span>
             </div>
           </a>
 
           {/* Desktop Modern App-Style Segmented Tab Track */}
-          <nav className="desktop-tab-track" role="tablist" aria-label="Main Application Tabs">
+          <nav className="desktop-tab-track" role="tablist" aria-label="Main Application Navigation">
             {navTabs.map((tab) => {
               const Icon = tab.icon;
               const active = isTabActive(tab);
@@ -174,7 +122,10 @@ export function Navbar({
                   onClick={() => handleTabClick(tab)}
                 >
                   <Icon size={16} className="tab-icon" />
-                  <span className="tab-label">{tab.name}</span>
+                  <span className="tab-label">
+                    <span className="tab-label-full">{tab.name}</span>
+                    <span className="tab-label-compact">{tab.shortName}</span>
+                  </span>
                   {tab.badge > 0 && (
                     <span className="tab-badge-pill" title={`${tab.badge} pending request`}>
                       {tab.badge}
@@ -214,9 +165,13 @@ export function Navbar({
           </div>
         </div>
 
-        {/* Mobile Drawer Menu (Accessible alternative on mobile) */}
+        {/* Mobile Drawer Menu */}
         {mobileMenuOpen && (
           <div className="mobile-menu-drawer">
+            <div className="mobile-drawer-header">
+              <span className="mobile-drawer-tagline">Discover the place beyond the places.</span>
+              <span className="community-prototype-badge">Community Prototype</span>
+            </div>
             <nav className="mobile-nav-list" aria-label="Mobile Drawer Navigation">
               {navTabs.map((tab) => {
                 const Icon = tab.icon;
