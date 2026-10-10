@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Compass, MapPin, BookOpen, Users, Home, Calendar, Menu, X, BookmarkCheck } from 'lucide-react';
+import { Compass, MapPin, BookOpen, Users, Home, Calendar, Menu, X, BookmarkCheck, Languages } from 'lucide-react';
 
 export function Navbar({ savedTripsCount, onOpenSavedTrips, onNavigate, currentView, incomingRequestsCount }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -7,6 +7,7 @@ export function Navbar({ savedTripsCount, onOpenSavedTrips, onNavigate, currentV
   const navLinks = [
     { name: 'Explore', href: '#explore', view: 'home', icon: Compass },
     { name: 'Plan a Trip', href: '#plan-trip', view: 'home', icon: Calendar },
+    { name: 'Lingua', href: '#lingua', view: 'lingua', icon: Languages },
     { name: 'Community', href: '#community', view: 'community', icon: BookOpen },
     { name: 'Connect', href: '#connect', view: 'connect', icon: Users, badge: incomingRequestsCount },
     { name: 'Stay', href: '#stay', view: 'stay', icon: Home },
@@ -15,8 +16,14 @@ export function Navbar({ savedTripsCount, onOpenSavedTrips, onNavigate, currentV
   const handleNavClick = (target) => {
     setMobileMenuOpen(false);
     const linkObj = typeof target === 'string'
-      ? { href: target, view: target === '#connect' ? 'connect' : (target === '#community' ? 'community' : (target === '#stay' ? 'stay' : 'home')) }
+      ? { href: target, view: target === '#connect' ? 'connect' : (target === '#community' ? 'community' : (target === '#stay' ? 'stay' : (target === '#lingua' ? 'lingua' : 'home'))) }
       : target;
+
+    if (linkObj.view === 'lingua') {
+      if (onNavigate) onNavigate('lingua');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
 
     if (linkObj.view === 'connect') {
       if (onNavigate) onNavigate('connect');

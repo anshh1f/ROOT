@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Languages } from 'lucide-react';
 import './App.css';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
@@ -14,10 +15,11 @@ import { ItineraryResults } from './components/ItineraryResults';
 import { RootsConnectHub } from './components/RootsConnectHub';
 import { RootsCommunityHub } from './components/RootsCommunityHub';
 import { RootsStayHub } from './components/RootsStayHub';
+import { RootsLingua } from './components/RootsLingua';
 import { generateItinerary } from './data/itineraryEngine';
 
 function App() {
-  const [currentView, setCurrentView] = useState('home'); // 'home' | 'results' | 'connect' | 'community' | 'stay'
+  const [currentView, setCurrentView] = useState('home'); // 'home' | 'results' | 'connect' | 'community' | 'stay' | 'lingua'
   const [activeItinerary, setActiveItinerary] = useState(null);
   const [plannerPrefill, setPlannerPrefill] = useState(null);
   const [prefilledDestination, setPrefilledDestination] = useState('');
@@ -227,6 +229,16 @@ function App() {
             </button>
             <button
               type="button"
+              className={`banner-quick-btn ${currentView === 'lingua' ? 'active' : ''}`}
+              onClick={() => {
+                setCurrentView('lingua');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+            >
+              ROOTS Lingua
+            </button>
+            <button
+              type="button"
               className={`banner-quick-btn ${currentView === 'stay' ? 'active' : ''}`}
               onClick={() => {
                 setCurrentView('stay');
@@ -259,7 +271,12 @@ function App() {
       />
 
       <main>
-        {currentView === 'stay' ? (
+        {currentView === 'lingua' ? (
+          /* Dedicated ROOTS Lingua — Speak Like a Local View */
+          <RootsLingua
+            onBackToHome={() => setCurrentView('home')}
+          />
+        ) : currentView === 'stay' ? (
           /* Dedicated ROOTS Stay Community Homestay Hub View */
           <RootsStayHub
             onBackToHome={() => setCurrentView('home')}
@@ -341,6 +358,44 @@ function App() {
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
             />
+
+            {/* ROOTS Lingua Showcase Section */}
+            <section id="lingua" className="section lingua-showcase-section">
+              <div className="container">
+                <div className="card-white lingua-showcase-card">
+                  <div className="lingua-showcase-content">
+                    <div className="section-tag">
+                      <Languages size={14} />
+                      <span>ROOTS Lingua</span>
+                    </div>
+                    <h2 className="showcase-title">Speak Like a Local on Your Journey</h2>
+                    <p className="showcase-desc">
+                      Break language barriers with authentic Malayalam, Hindi, Tamil, and Arabic travel expressions.
+                      Explore 7 curated categories with native script and phonetic guides, or use the live translator module.
+                    </p>
+                    <div className="showcase-chips-row">
+                      <span className="showcase-chip">🌴 7 Travel Categories</span>
+                      <span className="showcase-chip">🗣️ Phonetic Pronunciation</span>
+                      <span className="showcase-chip">⭐ Offline Favourites</span>
+                      <span className="showcase-chip">🌐 Pluggable Translator</span>
+                    </div>
+                    <div className="showcase-actions">
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => {
+                          setCurrentView('lingua');
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                      >
+                        <Languages size={18} />
+                        <span>Open Travel Phrasebook & Translator</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
           </>
         )}
       </main>
