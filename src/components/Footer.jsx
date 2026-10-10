@@ -12,7 +12,7 @@ export function Footer() {
         <div className="footer-top-grid">
           {/* Brand Info */}
           <div className="footer-brand-col">
-            <div className="brand-logo" style={{ marginBottom: '14px' }}>
+            <div className="brand-logo">
               <div className="brand-icon-wrapper">
                 <svg width="28" height="28" viewBox="0 0 100 100" fill="none">
                   <circle cx="50" cy="50" r="46" fill="#123B73" />

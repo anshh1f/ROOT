@@ -89,7 +89,7 @@ export function RootsConnect({ onOpenConnectHub }) {
             and splitting rural transport to reach uncommercialized valleys.
           </p>
 
-          <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="section-actions-row">
             {onOpenConnectHub && (
               <button
                 type="button"

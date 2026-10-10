@@ -1,50 +1,119 @@
 /* =====================================================================
-   ROOTS DESIGN SYSTEM — Ocean Blue Theme
+   ROOTS DESIGN SYSTEM — UNIFIED GLOBAL PALETTE & COMPONENT FOUNDATION
    "Discover the place beyond the places."
    ===================================================================== */
 
 :root {
-  /* Brand Color Tokens */
-  --deep-blue: #123B73;
-  --primary-blue: #3478F6;
-  --dark-blue: #1746A2;
-  --pale-blue: #EAF3FF;
-  --page-bg: #F7FAFF;
-  --white: #FFFFFF;
-  --main-text: #172033;
-  --secondary-text: #64748B;
-  --border-color: #E2E8F0;
+  /* -------------------------------------------------------------
+     1. CORE BRAND DESIGN TOKENS
+     ------------------------------------------------------------- */
+  --primary-brand: #123B73;       /* Primary brand: Deep Ocean Blue */
+  --secondary-brand: #3478F6;     /* Secondary brand: Vibrant Cerulean Blue */
+  --deep-blue: #123B73;           /* Standard token alias */
+  --primary-blue: #3478F6;        /* Standard token alias */
+  --dark-blue: #0F2F5D;           /* Deep active/hover tone */
 
-  /* Derived accents and overlays */
-  --primary-blue-hover: #2563eb;
-  --deep-blue-hover: #0d2c57;
-  --pale-blue-subtle: #f0f6ff;
+  --page-bg: #F7FAFF;             /* Global page background */
+  --surface-white: #FFFFFF;       /* Card and form surfaces */
+  --white: #FFFFFF;               /* White surface alias */
+  --subtle-blue: #EAF3FF;         /* Subtle blue background surface */
+  --pale-blue: #EAF3FF;           /* Pale blue token alias */
+  --pale-blue-subtle: #F0F6FF;    /* Ultra light blue surface */
+
+  --primary-text: #172033;        /* Primary high-contrast text */
+  --main-text: #172033;           /* Main text token alias */
+  --secondary-text: #64748B;      /* Secondary muted body & caption text */
+  --border-color: #E2E8F0;        /* Standard borders and dividers */
+  --divider-color: #E2E8F0;       /* Divider alias */
+  --border-color-subtle: #EDF2F7; /* Subtle card interior borders */
+
+  /* -------------------------------------------------------------
+     2. MEANINGFUL STATUS TOKENS (Strictly for error/success/warning)
+     ------------------------------------------------------------- */
+  --color-error: #EF4444;
+  --color-error-text: #DC2626;
+  --color-error-bg: #FEF2F2;
+  --color-error-border: #FECACA;
+
+  --color-success: #10B981;
+  --color-success-text: #059669;
+  --color-success-bg: #ECFDF5;
+  --color-success-border: #A7F3D0;
+
+  --color-warning: #F59E0B;
+  --color-warning-text: #D97706;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FDE68A;
+
+  /* -------------------------------------------------------------
+     3. INTERACTIVE & HOVER TOKENS
+     ------------------------------------------------------------- */
+  --primary-hover: #2563EB;
+  --primary-blue-hover: #2563EB;
+  --deep-blue-hover: #0A254A;
+  --tag-border: rgba(52, 120, 246, 0.22);
   --badge-bg: #EAF3FF;
-  --badge-text: #1746A2;
-  --tag-border: #d4e5ff;
+  --badge-text: #123B73;
 
-  /* Typography */
+  /* -------------------------------------------------------------
+     4. SPACING SCALE (Strict 4px increments)
+     ------------------------------------------------------------- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+
+  /* -------------------------------------------------------------
+     5. TYPOGRAPHY & TYPE SCALE
+     ------------------------------------------------------------- */
   --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-serif: 'Playfair Display', Georgia, serif;
 
-  /* Elevations & Shadows */
-  --shadow-xs: 0 1px 2px rgba(18, 59, 115, 0.04);
-  --shadow-sm: 0 2px 8px rgba(18, 59, 115, 0.06);
-  --shadow-md: 0 8px 24px rgba(18, 59, 115, 0.08);
-  --shadow-lg: 0 16px 36px rgba(18, 59, 115, 0.12);
-  --shadow-glow: 0 0 24px rgba(52, 120, 246, 0.25);
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.84375rem; /* 13.5px */
+  --text-base: 0.9375rem;/* 15px */
+  --text-md: 1rem;       /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
 
-  /* Borders & Radius */
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 20px;
+  /* -------------------------------------------------------------
+     6. BORDER RADII (Consistent system)
+     ------------------------------------------------------------- */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
   --radius-full: 9999px;
 
-  /* Transitions */
-  --transition-fast: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-smooth: 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  /* -------------------------------------------------------------
+     7. RESTRAINED PROFESSIONAL ELEVATION & SHADOWS
+     ------------------------------------------------------------- */
+  --shadow-xs: 0 1px 2px rgba(18, 59, 115, 0.04);
+  --shadow-sm: 0 1px 3px rgba(18, 59, 115, 0.06), 0 1px 2px rgba(18, 59, 115, 0.04);
+  --shadow-md: 0 4px 14px rgba(18, 59, 115, 0.07);
+  --shadow-lg: 0 10px 28px rgba(18, 59, 115, 0.10);
+
+  /* -------------------------------------------------------------
+     8. TRANSITIONS & TIMING
+     ------------------------------------------------------------- */
+  --transition-fast: 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-smooth: 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* =====================================================================
+   GLOBAL CSS RESET & BOX SIZING
+   ===================================================================== */
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -53,6 +122,7 @@
 
 html {
   scroll-behavior: smooth;
+  scroll-padding-top: 88px;
   font-family: var(--font-sans);
   background-color: var(--page-bg);
   color: var(--main-text);
@@ -65,19 +135,56 @@ body {
   background-color: var(--page-bg);
   color: var(--main-text);
   line-height: 1.6;
-  font-size: 16px;
+  font-size: 15px;
   overflow-x: hidden;
 }
 
-/* Typography styles */
+/* =====================================================================
+   TYPOGRAPHY FOUNDATION
+   ===================================================================== */
 h1, h2, h3, h4, h5, h6 {
   color: var(--deep-blue);
   font-weight: 700;
   line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+h1 {
+  font-size: 2.25rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+}
+
+h2 {
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+
+h3 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+h4 {
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+h5, h6 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 p {
   color: var(--secondary-text);
+  line-height: 1.6;
+  font-size: 0.95rem;
 }
 
 a {
@@ -87,17 +194,10 @@ a {
 }
 
 a:hover {
-  color: var(--dark-blue);
+  color: var(--deep-blue);
 }
 
-button {
-  font-family: inherit;
-  cursor: pointer;
-  border: none;
-  outline: none;
-  transition: all var(--transition-fast);
-}
-
+/* Accessible focus outline on all interactive controls */
 button,
 input,
 select,
@@ -115,7 +215,9 @@ a:focus-visible {
   outline-offset: 2px;
 }
 
-/* Layout Utilities */
+/* =====================================================================
+   LAYOUT UTILITIES & CONTAINERS
+   ===================================================================== */
 .container {
   width: 100%;
   max-width: 1240px;
@@ -126,108 +228,296 @@ a:focus-visible {
 }
 
 .section {
-  padding-top: 84px;
-  padding-bottom: 84px;
+  padding-top: 72px;
+  padding-bottom: 72px;
 }
 
 .section-header {
   text-align: center;
   max-width: 720px;
-  margin: 0 auto 52px;
+  margin: 0 auto 44px;
 }
 
 .section-tag {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--dark-blue);
+  letter-spacing: 0.06em;
+  color: var(--deep-blue);
   background-color: var(--pale-blue);
-  padding: 6px 14px;
+  padding: 5px 12px;
   border-radius: var(--radius-full);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   border: 1px solid var(--tag-border);
 }
 
 .section-title {
-  font-size: 2.35rem;
+  font-size: 2.15rem;
   font-weight: 800;
   color: var(--deep-blue);
   letter-spacing: -0.02em;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  line-height: 1.22;
 }
 
 .section-description {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   color: var(--secondary-text);
-  line-height: 1.65;
+  line-height: 1.6;
 }
 
-/* Buttons */
+/* =====================================================================
+   STANDARDIZED BUTTON COMPONENTS
+   ===================================================================== */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 12px 24px;
-  font-size: 0.95rem;
+  font-family: inherit;
+  font-size: 0.9rem;
   font-weight: 600;
+  line-height: 1;
   border-radius: var(--radius-md);
-  transition: all var(--transition-smooth);
+  padding: 10px 18px;
+  min-height: 42px;
+  transition: all var(--transition-fast);
+  text-decoration: none;
+  cursor: pointer;
+  border: 1.5px solid transparent;
+  user-select: none;
+  white-space: nowrap;
 }
 
+.btn:disabled,
+.btn[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Primary Button (Secondary Brand Blue #3478F6) */
 .btn-primary {
   background-color: var(--primary-blue);
   color: var(--white);
-  box-shadow: 0 4px 14px rgba(52, 120, 246, 0.32);
+  border-color: var(--primary-blue);
+  box-shadow: 0 2px 8px rgba(52, 120, 246, 0.25);
 }
 
-.btn-primary:hover {
-  background-color: var(--primary-blue-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(52, 120, 246, 0.4);
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--primary-hover);
+  border-color: var(--primary-hover);
+  color: var(--white);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(52, 120, 246, 0.35);
 }
 
+/* Secondary Button (Pale Blue Surface) */
+.btn-secondary {
+  background-color: var(--pale-blue);
+  color: var(--deep-blue);
+  border-color: rgba(52, 120, 246, 0.22);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #DDEBFF;
+  border-color: var(--primary-blue);
+  color: var(--deep-blue);
+}
+
+/* Deep Brand Button (#123B73) */
 .btn-deep {
   background-color: var(--deep-blue);
   color: var(--white);
+  border-color: var(--deep-blue);
 }
 
-.btn-deep:hover {
+.btn-deep:hover:not(:disabled) {
   background-color: var(--deep-blue-hover);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 18px rgba(18, 59, 115, 0.28);
+  border-color: var(--deep-blue-hover);
+  color: var(--white);
+  transform: translateY(-1px);
 }
 
+/* Outline Button */
 .btn-outline {
   background-color: var(--white);
   color: var(--deep-blue);
   border: 1.5px solid var(--border-color);
 }
 
-.btn-outline:hover {
+.btn-outline:hover:not(:disabled) {
   border-color: var(--primary-blue);
   color: var(--primary-blue);
   background-color: var(--pale-blue-subtle);
-  transform: translateY(-1px);
 }
 
-.btn-ghost {
-  background: transparent;
+/* Ghost / Text Button */
+.btn-ghost,
+.btn-text {
+  background-color: transparent;
+  color: var(--secondary-text);
+  border-color: transparent;
+  padding: 8px 12px;
+}
+
+.btn-ghost:hover:not(:disabled),
+.btn-text:hover:not(:disabled) {
+  background-color: var(--pale-blue);
   color: var(--deep-blue);
 }
 
-.btn-ghost:hover {
-  background-color: var(--pale-blue);
-  color: var(--dark-blue);
+/* Danger / Destructive Buttons */
+.btn-danger {
+  background-color: var(--status-error);
+  color: var(--white);
+  border-color: var(--status-error);
 }
 
-/* Card Foundations */
-.card-white {
+.btn-danger:hover:not(:disabled) {
+  background-color: #DC2626;
+  border-color: #DC2626;
+  color: var(--white);
+}
+
+.btn-outline-danger,
+.btn-reject {
   background-color: var(--white);
+  color: var(--status-error);
+  border-color: #FECACA;
+}
+
+.btn-outline-danger:hover:not(:disabled),
+.btn-reject:hover:not(:disabled) {
+  background-color: var(--status-error-bg);
+  border-color: var(--status-error);
+  color: #DC2626;
+}
+
+/* Button Sizing Variations */
+.btn-sm {
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 0.8125rem;
+  border-radius: var(--radius-sm);
+  gap: 6px;
+}
+
+.btn-lg {
+  min-height: 48px;
+  padding: 13px 24px;
+  font-size: 1rem;
+  font-weight: 700;
+  border-radius: var(--radius-md);
+  gap: 10px;
+}
+
+/* =====================================================================
+   STANDARDIZED FORM CONTROLS & INPUTS
+   ===================================================================== */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-label,
+label.form-label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--deep-blue);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  line-height: 1.3;
+}
+
+.req-star {
+  color: var(--color-error);
+  font-weight: 800;
+}
+
+.form-control,
+.input-field {
+  width: 100%;
+  height: 44px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  font-family: inherit;
+  border: 1.5px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--white);
+  color: var(--main-text);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  box-sizing: border-box;
+}
+
+.form-control:focus,
+.input-field:focus {
+  border-color: var(--primary-blue);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(52, 120, 246, 0.14);
+}
+
+.form-control::placeholder,
+.input-field::placeholder {
+  color: #94A3B8;
+  opacity: 1;
+}
+
+.form-control:disabled,
+.input-field:disabled {
+  background-color: #F8FAFC;
+  color: #94A3B8;
+  cursor: not-allowed;
+  border-color: #E2E8F0;
+}
+
+textarea.form-control,
+textarea.input-field {
+  height: auto;
+  min-height: 80px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+select.form-control,
+select.input-field {
+  cursor: pointer;
+  appearance: auto;
+}
+
+.form-control.input-error,
+.input-field.input-error {
+  border-color: var(--color-error);
+  background-color: #FFFBFB;
+}
+
+.form-helper {
+  font-size: 0.78rem;
+  color: var(--secondary-text);
+  line-height: 1.35;
+}
+
+.form-error {
+  font-size: 0.78rem;
+  color: var(--color-error-text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+}
+
+/* =====================================================================
+   STANDARDIZED CARDS & SURFACES
+   ===================================================================== */
+.card-white {
+  background-color: var(--surface-white);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
@@ -236,35 +526,259 @@ a:focus-visible {
 }
 
 .card-white:hover {
-  transform: translateY(-4px);
+  border-color: #CBD5E1;
   box-shadow: var(--shadow-md);
-  border-color: #cbd5e1;
 }
 
-/* Sample prototype badge */
-.sample-badge {
+.card-subtle {
+  background-color: var(--pale-blue);
+  border: 1px solid rgba(52, 120, 246, 0.2);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+
+/* =====================================================================
+   STANDARDIZED BADGES & STATUS INDICATORS
+   ===================================================================== */
+.badge,
+.status-pill {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.72rem;
+  gap: 5px;
+  font-size: 0.75rem;
   font-weight: 700;
-  background-color: #eff6ff;
-  color: #1e40af;
-  padding: 3px 8px;
-  border-radius: 4px;
-  border: 1px dashed #93c5fd;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  line-height: 1.3;
+  white-space: nowrap;
 }
 
-/* Responsive adjustments */
+/* Brand badge */
+.badge-brand,
+.badge-primary {
+  background-color: var(--pale-blue);
+  color: var(--deep-blue);
+  border: 1px solid rgba(52, 120, 246, 0.22);
+}
+
+/* Neutral badge */
+.badge-neutral {
+  background-color: #F1F5F9;
+  color: var(--secondary-text);
+  border: 1px solid var(--border-color);
+}
+
+/* Meaningful Success badge */
+.badge-success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+}
+
+/* Meaningful Warning badge */
+.badge-warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
+}
+
+/* Meaningful Error badge */
+.badge-error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-error-border);
+}
+
+/* =====================================================================
+   STANDARDIZED MODAL DIALOGS & OVERLAYS
+   ===================================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(18, 59, 115, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 2100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.modal-content {
+  background-color: var(--white);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  width: 100%;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.modal-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-full);
+  background-color: transparent;
+  color: var(--secondary-text);
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.modal-close-btn:hover {
+  background-color: #F1F5F9;
+  color: var(--deep-blue);
+}
+
+/* =====================================================================
+   STANDARDIZED ALERT BANNERS & FEEDBACK
+   ===================================================================== */
+.alert-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  font-size: 0.88rem;
+  line-height: 1.45;
+  margin-bottom: 16px;
+}
+
+.alert-error {
+  background-color: var(--color-error-bg);
+  color: var(--color-error-text);
+  border: 1px solid var(--color-error-border);
+}
+
+.alert-success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success-text);
+  border: 1px solid var(--color-success-border);
+}
+
+.alert-warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning-text);
+  border: 1px solid var(--color-warning-border);
+}
+
+/* =====================================================================
+   RESPONSIVE UTILITIES & TOUCH TARGET COMPLIANCE
+   ===================================================================== */
+@media (max-width: 640px) {
+  .results-buddy-banner {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 20px 18px;
+    gap: 16px;
+  }
+
+  .results-buddy-banner .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .community-hero-card,
+  .connect-hero-card {
+    padding: 24px 20px;
+  }
+
+  .community-stats-row {
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn-sm {
+    min-height: 38px;
+  }
+
+  .form-control {
+    min-height: 44px;
+    font-size: 16px; /* Prevents auto-zoom on mobile safari */
+  }
+
+  .card-white,
+  .card-subtle {
+    padding: 18px 16px;
+    border-radius: var(--radius-md);
+  }
+
+  .modal-content {
+    margin: 12px;
+    width: calc(100% - 24px);
+    max-height: 94vh;
+  }
+
+  .modal-header {
+    padding: 14px 18px;
+  }
+
+  .modal-body {
+    padding: 18px 16px;
+  }
+}
+
+@media (max-width: 360px) {
+  .container {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .community-hero-card,
+  .connect-hero-card {
+    padding: 18px 14px;
+  }
+
+  .btn {
+    padding: 10px 14px;
+    font-size: 0.85rem;
+  }
+}
+
+.alert-info {
+  background-color: var(--pale-blue);
+  color: var(--deep-blue);
+  border: 1px solid rgba(52, 120, 246, 0.25);
+}
+
+/* =====================================================================
+   RESPONSIVE BASELINE ADJUSTMENTS
+   ===================================================================== */
 @media (max-width: 768px) {
   .section {
-    padding-top: 56px;
-    padding-bottom: 56px;
+    padding-top: 48px;
+    padding-bottom: 48px;
   }
   .section-title {
-    font-size: 1.85rem;
+    font-size: 1.75rem;
+  }
+  .section-description {
+    font-size: 0.95rem;
   }
   .container {
     padding-left: 16px;

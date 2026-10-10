@@ -91,7 +91,7 @@ export function TravelDiaries({ onOpenCommunity }) {
             for sunrise rowboats, bamboo woodcarving, and village chai circles.
           </p>
 
-          <div style={{ marginTop: '20px', display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="section-actions-row">
             {onOpenCommunity && (
               <button
                 type="button"

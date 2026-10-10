@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Languages } from 'lucide-react';
 import './App.css';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthModal } from './components/AuthModal';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { ActivityCards } from './components/ActivityCards';
@@ -18,7 +20,8 @@ import { RootsStayHub } from './components/RootsStayHub';
 import { RootsLingua } from './components/RootsLingua';
 import { generateItinerary } from './data/itineraryEngine';
 
-function App() {
+function AppContent() {
+  const { requireAuth } = useAuth();
   const [currentView, setCurrentView] = useState('home'); // 'home' | 'results' | 'connect' | 'community' | 'stay' | 'lingua'
   const [activeItinerary, setActiveItinerary] = useState(null);
   const [plannerPrefill, setPlannerPrefill] = useState(null);
@@ -155,11 +158,8 @@ function App() {
     }
   };
 
-  // Save trip to localStorage
-  const handleSaveTrip = (tripToSave) => {
-    const item = tripToSave || activeItinerary;
-    if (!item) return;
-
+  // Internal persistence for saved trips
+  const executeSaveTrip = (item) => {
     setSavedTrips((prev) => {
       const exists = prev.find((t) => t.id === item.id);
       let updated;
@@ -170,6 +170,18 @@ function App() {
       }
       localStorage.setItem('roots_saved_trips', JSON.stringify(updated));
       return updated;
+    });
+  };
+
+  // Save trip: prompts guest-first authentication contextual modal if not signed in
+  const handleSaveTrip = (tripToSave) => {
+    const item = tripToSave || activeItinerary;
+    if (!item) return;
+
+    requireAuth({
+      actionName: 'Save trip',
+      message: 'Create an account to save your journey and keep everything in one place.',
+      onAuthenticated: () => executeSaveTrip(item)
     });
   };
 
@@ -364,8 +376,17 @@ function App() {
         onDeleteTrip={handleDeleteTrip}
         onSelectTrip={handleSelectTrip}
       />
+
+      {/* Global Contextual Auth Modal */}
+      <AuthModal />
     </div>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}

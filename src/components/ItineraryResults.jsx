@@ -924,17 +924,17 @@ export function ItineraryResults({
 
       {/* Travel Buddy Match Callout */}
       {onFindBuddies && (
-        <section className="container results-buddy-callout-section" style={{ marginTop: '32px' }}>
-          <div className="card-white" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '24px 28px', borderRadius: '16px', background: 'linear-gradient(135deg, #FFFFFF 0%, #F0F6FF 100%)', border: '1px solid #D6E4FF', gap: '20px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', minWidth: '280px', flex: '1 1 auto' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', backgroundColor: '#EAF3FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#123B73', flexShrink: 0 }}>
+        <section className="container results-buddy-callout-section">
+          <div className="results-buddy-banner">
+            <div className="results-buddy-banner-left">
+              <div className="results-buddy-icon-wrap">
                 <Users size={24} />
               </div>
               <div>
-                <h4 style={{ margin: '0 0 4px 0', fontSize: '1.125rem', color: '#123B73', fontWeight: 700 }}>
+                <h4 className="results-buddy-title">
                   Looking for a Travel Buddy to {destination}?
                 </h4>
-                <p style={{ margin: 0, fontSize: '0.875rem', color: '#64748B' }}>
+                <p className="results-buddy-text">
                   Discover matched fellow travellers heading to {destination} during overlapping dates to share local transport and trails.
                 </p>
               </div>

@@ -32,9 +32,9 @@ import {
   Mountain,
   Landmark,
   Share2,
-  CornerDownRight,
   HelpCircle
 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import {
   getCommunityDiaries,
   saveCommunityDiary,
@@ -50,8 +50,22 @@ import {
 } from '../data/communityHubData';
 
 export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
+  const { requireAuth } = useAuth();
   // Navigation / active tabs
   const [activeTab, setActiveTab] = useState('diaries'); // 'diaries' | 'places' | 'experiences' | 'moderation'
+
+  const handleTriggerContribute = (preferredType) => {
+    const type = preferredType || (activeTab === 'places' ? 'places' : activeTab === 'experiences' ? 'experiences' : 'diaries');
+    requireAuth({
+      actionName: 'Publish a community contribution',
+      message: 'Create an account or sign in to share authentic travel knowledge and hidden discoveries with fellow explorers.',
+      onAuthenticated: () => {
+        if (type === 'places') setShowAddPlaceModal(true);
+        else if (type === 'experiences') setShowShareExpModal(true);
+        else setShowCreateDiaryModal(true);
+      }
+    });
+  };
   const [selectedDestinationFilter, setSelectedDestinationFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState('all');
@@ -222,7 +236,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
               <ShieldCheck size={15} />
               <span>Moderation Dashboard</span>
               {pendingCount > 0 && (
-                <span className="nav-badge-pill" style={{ marginLeft: '6px', background: '#ef4444' }}>
+                <span className="nav-badge-pill badge-error" style={{ marginLeft: '6px' }}>
                   {pendingCount}
                 </span>
               )}
@@ -233,11 +247,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
-                onClick={() => {
-                  if (activeTab === 'places') setShowAddPlaceModal(true);
-                  else if (activeTab === 'experiences') setShowShareExpModal(true);
-                  else setShowCreateDiaryModal(true);
-                }}
+                onClick={() => handleTriggerContribute()}
               >
                 <Plus size={16} />
                 <span>
@@ -264,13 +274,8 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
       )}
 
       {/* Community Hero Banner */}
-      <section className="container community-hero-section" style={{ paddingTop: '28px', paddingBottom: '16px' }}>
-        <div className="community-hero-card card-white" style={{
-          padding: '36px 40px',
-          background: 'radial-gradient(circle at 90% 10%, rgba(234, 243, 255, 0.8) 0%, #ffffff 80%)',
-          borderRadius: '16px',
-          border: '1px solid #E2E8F0'
-        }}>
+      <section className="container community-hero-section">
+        <div className="community-hero-card card-white">
           <div className="header-badge-row" style={{ justifyContent: 'flex-start', marginBottom: '8px' }}>
             <span className="section-tag" style={{ marginBottom: 0 }}>
               <BookOpen size={14} />
@@ -289,7 +294,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
             <button
               type="button"
               className="btn btn-outline btn-sm"
-              onClick={() => setShowCreateDiaryModal(true)}
+              onClick={() => handleTriggerContribute('diaries')}
             >
               <FileText size={14} />
               <span>Create Travel Diary</span>
@@ -297,7 +302,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
             <button
               type="button"
               className="btn btn-outline btn-sm"
-              onClick={() => setShowAddPlaceModal(true)}
+              onClick={() => handleTriggerContribute('places')}
             >
               <MapPin size={14} />
               <span>Add Place or Food Spot</span>
@@ -305,7 +310,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
             <button
               type="button"
               className="btn btn-outline btn-sm"
-              onClick={() => setShowShareExpModal(true)}
+              onClick={() => handleTriggerContribute('experiences')}
             >
               <Sparkles size={14} />
               <span>Share a Local Experience</span>
@@ -326,13 +331,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
 
       {/* Main Category Tabs */}
       <section className="container" style={{ marginBottom: '24px' }}>
-        <div className="community-tabs-nav" style={{
-          display: 'flex',
-          gap: '8px',
-          borderBottom: '2px solid #E2E8F0',
-          paddingBottom: '8px',
-          flexWrap: 'wrap'
-        }}>
+        <div className="community-tabs-nav">
           <button
             type="button"
             className={`community-nav-tab ${activeTab === 'diaries' ? 'active' : ''}`}
@@ -474,7 +473,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
 
           {/* Category Filter Chips for Places / Experiences */}
           {activeTab === 'places' && (
-            <div className="destination-chips-row" style={{ marginTop: '8px', background: '#F8FBFF' }}>
+            <div className="destination-chips-row" style={{ marginTop: '8px' }}>
               <span className="chips-title">Category:</span>
               <button
                 type="button"
@@ -515,7 +514,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
           )}
 
           {activeTab === 'experiences' && (
-            <div className="destination-chips-row" style={{ marginTop: '8px', background: '#F8FBFF' }}>
+            <div className="destination-chips-row" style={{ marginTop: '8px' }}>
               <span className="chips-title">Experience Type:</span>
               <button
                 type="button"
@@ -927,11 +926,7 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
       {activeTab === 'moderation' && (
         <section className="container moderation-dashboard-section">
           {/* Moderation Admin Banner */}
-          <div className="moderation-header-card card-white" style={{
-            padding: '24px 28px',
-            marginBottom: '24px',
-            borderLeft: '4px solid #123B73'
-          }}>
+          <div className="moderation-header-card card-white">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
               <div>
                 <div className="header-badge-row" style={{ justifyContent: 'flex-start', marginBottom: '6px' }}>
@@ -1048,9 +1043,8 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
 
                     <button
                       type="button"
-                      className="btn btn-outline btn-sm btn-reject"
+                      className="btn btn-outline-danger btn-sm"
                       onClick={() => setModerationActionModal({ submission: sub, action: 'reject' })}
-                      style={{ color: '#dc2626', borderColor: '#fca5a5' }}
                     >
                       <X size={15} />
                       <span>Reject</span>
@@ -1098,9 +1092,8 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
                         <>
                           <button
                             type="button"
-                            className="btn btn-outline btn-xs"
+                            className="btn btn-outline-danger btn-xs"
                             onClick={() => handleHideReportedItem(report.id)}
-                            style={{ color: '#dc2626', borderColor: '#fca5a5' }}
                           >
                             Hide Entry
                           </button>

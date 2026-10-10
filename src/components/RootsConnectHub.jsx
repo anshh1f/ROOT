@@ -33,11 +33,13 @@ import {
   evaluateBuddyMatch, 
   ACTIVITY_NAMES 
 } from '../data/connectData';
+import { useAuth } from '../context/AuthContext';
 
 export function RootsConnectHub({
   userTripContext,
   onBackToHome
 }) {
+  const { requireAuth } = useAuth();
   // User's own trip criteria for matching
   const [userCriteria, setUserCriteria] = useState(() => {
     const saved = localStorage.getItem('roots_user_connect_criteria');
@@ -117,17 +119,23 @@ export function RootsConnectHub({
 
   // Connection Actions
   const handleSendRequest = (buddyId) => {
-    if (buddyId === 'user-self' || buddyId?.startsWith('user-')) {
-      showToast('Cannot send a connection request to your own profile.');
-      return;
-    }
-    const currentStatus = requestStatusMap[buddyId];
-    if (currentStatus === 'request_sent' || currentStatus === 'accepted') {
-      showToast('A connection request is already active for this traveller.');
-      return;
-    }
-    updateStatus(buddyId, 'request_sent');
-    showToast('Connection request sent! The traveller can now review your profile.');
+    requireAuth({
+      actionName: 'Connect with a travel buddy',
+      message: 'Create an account or sign in to connect and plan shared trails with fellow explorers.',
+      onAuthenticated: () => {
+        if (buddyId === 'user-self' || buddyId?.startsWith('user-')) {
+          showToast('Cannot send a connection request to your own profile.');
+          return;
+        }
+        const currentStatus = requestStatusMap[buddyId];
+        if (currentStatus === 'request_sent' || currentStatus === 'accepted') {
+          showToast('A connection request is already active for this traveller.');
+          return;
+        }
+        updateStatus(buddyId, 'request_sent');
+        showToast('Connection request sent! The traveller can now review your profile.');
+      }
+    });
   };
 
   const handleCancelRequest = (buddyId) => {
@@ -198,28 +206,34 @@ export function RootsConnectHub({
 
   // Open Chat
   const handleOpenChat = (buddy) => {
-    setActiveChatBuddy(buddy);
-    // Load persisted chat
-    const stored = localStorage.getItem(`roots_connect_messages_${buddy.id}`);
-    if (stored) {
-      try {
-        setChatMessages(JSON.parse(stored));
-      } catch (e) {
-        setChatMessages([]);
-      }
-    } else {
-      // Default greeting from buddy
-      const initial = [
-        {
-          id: 'msg-init-1',
-          sender: 'buddy',
-          text: buddy.initialMessage || `Hey there! Glad we connected on ROOTS. Are you heading to ${buddy.destination} around the same dates?`,
-          timestamp: 'Yesterday at 4:30 PM'
+    requireAuth({
+      actionName: 'Chat with a travel buddy',
+      message: 'Create an account or sign in to send messages and coordinate trails safely.',
+      onAuthenticated: () => {
+        setActiveChatBuddy(buddy);
+        // Load persisted chat
+        const stored = localStorage.getItem(`roots_connect_messages_${buddy.id}`);
+        if (stored) {
+          try {
+            setChatMessages(JSON.parse(stored));
+          } catch (e) {
+            setChatMessages([]);
+          }
+        } else {
+          // Default greeting from buddy
+          const initial = [
+            {
+              id: 'msg-init-1',
+              sender: 'buddy',
+              text: buddy.initialMessage || `Hey there! Glad we connected on ROOTS. Are you heading to ${buddy.destination} around the same dates?`,
+              timestamp: 'Yesterday at 4:30 PM'
+            }
+          ];
+          setChatMessages(initial);
+          localStorage.setItem(`roots_connect_messages_${buddy.id}`, JSON.stringify(initial));
         }
-      ];
-      setChatMessages(initial);
-      localStorage.setItem(`roots_connect_messages_${buddy.id}`, JSON.stringify(initial));
-    }
+      }
+    });
   };
 
   const handleSendMessage = (e) => {
@@ -1086,7 +1100,7 @@ function ReportModal({ buddy, onClose, onSubmitReport }) {
               <button type="button" className="btn btn-outline" onClick={onClose}>
                 Cancel
               </button>
-              <button type="submit" className="btn btn-primary" style={{ backgroundColor: '#dc2626', borderColor: '#dc2626' }}>
+              <button type="submit" className="btn btn-danger">
                 Submit Report & Block Profile
               </button>
             </div>

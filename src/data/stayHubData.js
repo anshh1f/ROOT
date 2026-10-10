@@ -826,15 +826,23 @@ export function createStayBookingRequest(data) {
   // Calculate nights
   const checkIn = new Date(data.checkInDate);
   const checkOut = new Date(data.checkOutDate);
-  const diffTime = checkOut - checkIn;
-  const nights = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+  const diffTime = checkOut.getTime() - checkIn.getTime();
+  const rawNights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-  if (isNaN(nights) || nights <= 0) {
-    throw new Error('Invalid check-in or check-out date range.');
+  if (isNaN(rawNights) || rawNights <= 0) {
+    throw new Error('Check-out date must be after check-in date.');
+  }
+
+  const nights = rawNights;
+
+  // Validate property capacity
+  const maxCap = stay.maxGuests || (stay.rooms ? stay.rooms * 2 : 4);
+  const guests = Number(data.guestsCount) || 1;
+  if (guests < 1 || guests > maxCap) {
+    throw new Error(`Guest count must be between 1 and ${maxCap} guests for this property.`);
   }
 
   // Date-overlap check against configured blocked dates
-  const requestedRangeStr = `${data.checkInDate}_${data.checkOutDate}`;
   const isConflict = stay.blockedDates && stay.blockedDates.some(range => {
     const [bStart, bEnd] = range.split('_');
     return (data.checkInDate <= bEnd && data.checkOutDate >= bStart);
@@ -845,7 +853,6 @@ export function createStayBookingRequest(data) {
   }
 
   // Price Calculation
-  const guests = Number(data.guestsCount) || 1;
   const nightlyBase = stay.nightlyRateINR * nights;
   const cleaningFee = stay.cleaningOrCommunityFeeINR || 0;
   const dinnerTotal = data.includeDinner && stay.mealOptions?.dinnerCostPerPersonINR

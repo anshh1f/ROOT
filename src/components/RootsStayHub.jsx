@@ -3,7 +3,8 @@ import {
   Home, MapPin, Shield, Check, Calendar, ArrowRight, X, Bookmark, Sparkles,
   Send, Users, AlertCircle, Eye, CheckCircle2, XCircle, Clock, Info, Search,
   Filter, Coffee, Wifi, Mountain, Utensils, Activity, Flag, ChevronRight,
-  Lock, Bed, Bath, Plus, RefreshCw, FileText, CheckSquare, Phone, Mail, Award
+  Lock, Bed, Bath, Plus, RefreshCw, FileText, CheckSquare, Phone, Mail, Award,
+  Image, Camera, ChevronLeft, Trash2, Heart, Upload, User
 } from 'lucide-react';
 import {
   getAllStays,
@@ -19,8 +20,10 @@ import {
   reportStayListing,
   moderateStayReport
 } from '../data/stayHubData';
+import { useAuth } from '../context/AuthContext';
 
 export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
+  const { requireAuth } = useAuth();
   // Navigation tabs: 'discover' | 'host' | 'bookings' | 'admin'
   const [activeTab, setActiveTab] = useState('discover');
 
@@ -87,17 +90,23 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
   });
 
   // Become a Host Form State
+  const [hostStep, setHostStep] = useState(1); // Steps 1 to 4
+  const [hostSubmitting, setHostSubmitting] = useState(false);
+  const [newPhotoUrl, setNewPhotoUrl] = useState('');
+  const [stepErrors, setStepErrors] = useState({});
+  const [languageSearch, setLanguageSearch] = useState('');
+  const [avatarError, setAvatarError] = useState('');
   const [hostForm, setHostForm] = useState({
     hostFullName: '',
     age18Plus: false,
-    contactVerified: true,
+    contactVerified: false,
     languages: 'English, Malayalam',
     hostIntro: '',
     propertyName: '',
     destinationId: 'varkala',
     generalLocation: '',
     propertyType: 'Village Homestay',
-    hostLivesOnProperty: true,
+    hostLivesOnProperty: false,
     rooms: 2,
     beds: 2,
     maxGuests: 4,
@@ -128,6 +137,91 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
   });
   const [hostSubmitSuccess, setHostSubmitSuccess] = useState(null);
   const [hostSubmitError, setHostSubmitError] = useState('');
+
+  // Language options pool for Step 1
+  const AVAILABLE_LANGUAGES = [
+    'English', 'Malayalam', 'Hindi', 'Tamil', 'Kannada', 'Bengali',
+    'Khasi', 'Marathi', 'Telugu', 'Gujarati', 'French', 'Spanish', 'German'
+  ];
+
+  // Helper to handle avatar file upload
+  const handleAvatarFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate type: image/jpeg, image/png, image/webp
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setAvatarError('Please upload a valid image file (JPEG, PNG, or WebP).');
+      return;
+    }
+
+    // Validate size: max 5MB
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setAvatarError('Image size exceeds 5MB limit. Please upload a smaller photo.');
+      return;
+    }
+
+    setAvatarError('');
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setHostForm(prev => ({ ...prev, hostAvatar: reader.result }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Helper to toggle a language chip
+  const handleToggleLanguage = (langName) => {
+    const currentList = hostForm.languages
+      ? hostForm.languages.split(',').map(l => l.trim()).filter(Boolean)
+      : [];
+    const exists = currentList.some(l => l.toLowerCase() === langName.toLowerCase());
+
+    let updatedList;
+    if (exists) {
+      updatedList = currentList.filter(l => l.toLowerCase() !== langName.toLowerCase());
+    } else {
+      updatedList = [...currentList, langName];
+    }
+
+    const newLangStr = updatedList.join(', ');
+    setHostForm(prev => ({ ...prev, languages: newLangStr }));
+    if (stepErrors.languages && updatedList.length > 0) {
+      setStepErrors(prev => ({ ...prev, languages: undefined }));
+    }
+  };
+
+  // Helper to add custom language from search input
+  const handleAddCustomLanguage = (e) => {
+    if (e) e.preventDefault();
+    const query = languageSearch.trim();
+    if (!query) return;
+
+    const currentList = hostForm.languages
+      ? hostForm.languages.split(',').map(l => l.trim()).filter(Boolean)
+      : [];
+    const exists = currentList.some(l => l.toLowerCase() === query.toLowerCase());
+
+    if (!exists) {
+      const updatedList = [...currentList, query];
+      setHostForm(prev => ({ ...prev, languages: updatedList.join(', ') }));
+    }
+    setLanguageSearch('');
+    if (stepErrors.languages) {
+      setStepErrors(prev => ({ ...prev, languages: undefined }));
+    }
+  };
+
+  // Helper to insert intro prompt into host story
+  const handleInsertIntroPrompt = (promptText) => {
+    setHostForm(prev => {
+      const existing = prev.hostIntro ? prev.hostIntro.trim() : '';
+      const separator = existing ? (existing.endsWith('.') ? ' ' : '. ') : '';
+      const updated = existing ? `${existing}${separator}${promptText}` : promptText;
+      return { ...prev, hostIntro: updated.slice(0, 600) };
+    });
+  };
 
   // Synchronize storage
   const refreshAllData = () => {
@@ -216,89 +310,289 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
   // Open Booking Modal for a stay
   const handleOpenBooking = (stay) => {
     setBookingStay(stay);
-    setBookingForm({
-      guestName: '',
-      guestContact: '',
-      checkInDate: checkInDate || '2026-11-15',
-      checkOutDate: checkOutDate || '2026-11-18',
-      guestsCount: guestsFilter || 2,
-      includeDinner: stay.mealOptions?.dinnerAvailable || false,
-      guestMessage: ''
-    });
+    const maxCap = stay.maxGuests || (stay.rooms ? stay.rooms * 2 : 4);
+    setBookingForm(prev => ({
+      guestName: prev?.guestName || '',
+      guestContact: prev?.guestContact || '',
+      checkInDate: checkInDate || prev?.checkInDate || '2026-11-15',
+      checkOutDate: checkOutDate || prev?.checkOutDate || '2026-11-18',
+      guestsCount: Math.min(Math.max(1, guestsFilter || prev?.guestsCount || 2), maxCap),
+      includeDinner: stay.mealOptions?.dinnerAvailable !== false,
+      guestMessage: prev?.guestMessage || ''
+    }));
     setBookingError('');
     setBookingSuccess(null);
   };
+
+  // Dynamic Pricing & Date Calculation for Booking Request Form
+  const bookingPricing = useMemo(() => {
+    if (!bookingStay) {
+      return {
+        nights: 0,
+        isValidDates: false,
+        baseTotal: 0,
+        cleaningFee: 0,
+        dinnerRate: 0,
+        dinnerTotal: 0,
+        estimatedTotal: 0,
+        dateError: '',
+        guests: 1,
+        maxCapacity: 4
+      };
+    }
+
+    const maxCapacity = bookingStay.maxGuests || (bookingStay.rooms ? bookingStay.rooms * 2 : 4);
+    const { checkInDate: cIn, checkOutDate: cOut, guestsCount, includeDinner } = bookingForm;
+
+    if (!cIn || !cOut) {
+      return {
+        nights: 0,
+        isValidDates: false,
+        baseTotal: 0,
+        cleaningFee: bookingStay.cleaningOrCommunityFeeINR || 0,
+        dinnerRate: bookingStay.mealOptions?.dinnerCostPerPersonINR || 0,
+        dinnerTotal: 0,
+        estimatedTotal: 0,
+        dateError: 'Please select both check-in and check-out dates.',
+        guests: Number(guestsCount) || 1,
+        maxCapacity
+      };
+    }
+
+    const checkIn = new Date(cIn);
+    const checkOut = new Date(cOut);
+
+    if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
+      return {
+        nights: 0,
+        isValidDates: false,
+        baseTotal: 0,
+        cleaningFee: 0,
+        dinnerRate: 0,
+        dinnerTotal: 0,
+        estimatedTotal: 0,
+        dateError: 'Invalid check-in or check-out date format.',
+        guests: Number(guestsCount) || 1,
+        maxCapacity
+      };
+    }
+
+    const diffTime = checkOut.getTime() - checkIn.getTime();
+    const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (nights <= 0) {
+      return {
+        nights: 0,
+        isValidDates: false,
+        baseTotal: 0,
+        cleaningFee: 0,
+        dinnerRate: 0,
+        dinnerTotal: 0,
+        estimatedTotal: 0,
+        dateError: 'Check-out date must be after check-in date.',
+        guests: Number(guestsCount) || 1,
+        maxCapacity
+      };
+    }
+
+    const guests = Math.max(1, Number(guestsCount) || 1);
+    const baseTotal = bookingStay.nightlyRateINR * nights;
+    const cleaningFee = bookingStay.cleaningOrCommunityFeeINR || 0;
+    const dinnerRate = bookingStay.mealOptions?.dinnerCostPerPersonINR || 0;
+    const dinnerTotal = (includeDinner && dinnerRate > 0) ? (dinnerRate * guests * nights) : 0;
+    const estimatedTotal = baseTotal + cleaningFee + dinnerTotal;
+
+    return {
+      nights,
+      isValidDates: true,
+      baseTotal,
+      cleaningFee,
+      dinnerRate,
+      dinnerTotal,
+      estimatedTotal,
+      dateError: '',
+      guests,
+      maxCapacity
+    };
+  }, [bookingStay, bookingForm.checkInDate, bookingForm.checkOutDate, bookingForm.guestsCount, bookingForm.includeDinner]);
 
   // Submit Booking Request
   const handleBookingSubmit = (e) => {
     e.preventDefault();
     setBookingError('');
 
-    if (!bookingForm.guestName.trim()) {
-      setBookingError('Please enter your full name.');
-      return;
-    }
-    if (!bookingForm.guestContact.trim()) {
-      setBookingError('Please provide an email or phone number for confirmation.');
-      return;
-    }
+    if (!bookingStay) return;
+
+    const maxCap = bookingStay.maxGuests || (bookingStay.rooms ? bookingStay.rooms * 2 : 4);
+
     if (!bookingForm.checkInDate || !bookingForm.checkOutDate) {
-      setBookingError('Please select check-in and check-out dates.');
+      setBookingError('Please select both check-in and check-out dates.');
       return;
     }
 
-    try {
-      const newBooking = createStayBookingRequest({
-        stayId: bookingStay.id,
-        guestName: bookingForm.guestName,
-        guestContact: bookingForm.guestContact,
-        checkInDate: bookingForm.checkInDate,
-        checkOutDate: bookingForm.checkOutDate,
-        guestsCount: bookingForm.guestsCount,
-        includeDinner: bookingForm.includeDinner,
-        guestMessage: bookingForm.guestMessage
-      });
+    const checkIn = new Date(bookingForm.checkInDate);
+    const checkOut = new Date(bookingForm.checkOutDate);
 
-      setBookingSuccess(newBooking);
-      refreshAllData();
-    } catch (err) {
-      setBookingError(err.message || 'Error creating booking request.');
+    if (isNaN(checkIn.getTime()) || isNaN(checkOut.getTime())) {
+      setBookingError('Please select valid check-in and check-out dates.');
+      return;
     }
+
+    if (checkOut <= checkIn) {
+      setBookingError('Check-out date must be after check-in date.');
+      return;
+    }
+
+    const numGuests = Number(bookingForm.guestsCount) || 1;
+    if (numGuests < 1) {
+      setBookingError('At least 1 guest is required.');
+      return;
+    }
+
+    if (numGuests > maxCap) {
+      setBookingError(`Number of guests cannot exceed property capacity (${maxCap} guests max).`);
+      return;
+    }
+
+    if (!bookingForm.guestName.trim()) {
+      setBookingError('Please enter your full legal or preferred name.');
+      return;
+    }
+
+    if (!bookingForm.guestContact.trim()) {
+      setBookingError('Please provide an email or phone number for host confirmation.');
+      return;
+    }
+
+    const executeBooking = () => {
+      try {
+        const newBooking = createStayBookingRequest({
+          stayId: bookingStay.id,
+          guestName: bookingForm.guestName.trim(),
+          guestContact: bookingForm.guestContact.trim(),
+          checkInDate: bookingForm.checkInDate,
+          checkOutDate: bookingForm.checkOutDate,
+          guestsCount: numGuests,
+          includeDinner: Boolean(bookingForm.includeDinner),
+          guestMessage: bookingForm.guestMessage.trim()
+        });
+
+        setBookingSuccess(newBooking);
+        refreshAllData();
+      } catch (err) {
+        // Form fields are preserved in bookingForm state
+        setBookingError(err.message || 'Error creating booking request.');
+      }
+    };
+
+    requireAuth({
+      actionName: 'Submit homestay booking',
+      message: 'Create an account or sign in to confirm and manage your homestay reservation request.',
+      onAuthenticated: () => executeBooking()
+    });
   };
 
-  // Host Registration Submit
+  // Validate fields for a given wizard step
+  const validateHostStep = (stepNumber) => {
+    const errs = {};
+    if (stepNumber === 1) {
+      if (!hostForm.hostFullName.trim()) {
+        errs.hostFullName = 'Full legal or preferred name is required.';
+      }
+      if (!hostForm.languages || !hostForm.languages.trim()) {
+        errs.languages = 'Please select or enter at least one language you speak.';
+      }
+      if (!hostForm.age18Plus) {
+        errs.age18Plus = 'You must confirm age eligibility (18+ years) to register as a host.';
+      }
+    } else if (stepNumber === 2) {
+      if (!hostForm.propertyName.trim()) {
+        errs.propertyName = 'Please provide a warm, descriptive name for your homestay.';
+      }
+      if (!hostForm.generalLocation.trim()) {
+        errs.generalLocation = 'General location (village, landmark, or district) is required.';
+      }
+      if (!hostForm.rooms || Number(hostForm.rooms) < 1) {
+        errs.rooms = 'Please specify at least 1 guest bedroom.';
+      }
+      if (!hostForm.maxGuests || Number(hostForm.maxGuests) < 1) {
+        errs.maxGuests = 'Please specify maximum guest capacity.';
+      }
+    } else if (stepNumber === 3) {
+      if (!hostForm.nightlyRateINR || Number(hostForm.nightlyRateINR) <= 0) {
+        errs.nightlyRateINR = 'Please enter a valid nightly rate in INR (minimum ₹500).';
+      } else if (Number(hostForm.nightlyRateINR) < 500) {
+        errs.nightlyRateINR = 'Minimum recommended nightly rate is ₹500 to support local hosting.';
+      }
+    } else if (stepNumber === 4) {
+      if (!hostForm.photos || hostForm.photos.length === 0) {
+        errs.photos = 'Please provide at least one photo showing your homestay or guest room.';
+      }
+    }
+    return errs;
+  };
+
+  const handleNextHostStep = () => {
+    const errs = validateHostStep(hostStep);
+    setStepErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setHostSubmitError('Please address the highlighted fields before proceeding.');
+      return;
+    }
+    setHostSubmitError('');
+    setHostStep(prev => Math.min(4, prev + 1));
+    window.scrollTo({ top: 120, behavior: 'smooth' });
+  };
+
+  const handlePrevHostStep = () => {
+    setHostSubmitError('');
+    setStepErrors({});
+    setHostStep(prev => Math.max(1, prev - 1));
+    window.scrollTo({ top: 120, behavior: 'smooth' });
+  };
+
+  // Host Registration Final Submit
   const handleHostFormSubmit = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setHostSubmitError('');
 
-    if (!hostForm.hostFullName.trim()) {
-      setHostSubmitError('Host full name is required.');
-      return;
-    }
-    if (!hostForm.age18Plus) {
-      setHostSubmitError('You must confirm age eligibility (18+ years) to register as a host.');
-      return;
-    }
-    if (!hostForm.propertyName.trim()) {
-      setHostSubmitError('Please provide a descriptive name for your homestay.');
-      return;
-    }
-    if (!hostForm.generalLocation.trim()) {
-      setHostSubmitError('General location (village/district) is required.');
-      return;
-    }
-    if (!hostForm.nightlyRateINR || Number(hostForm.nightlyRateINR) <= 0) {
-      setHostSubmitError('Please enter a valid nightly rate in INR.');
+    // Full validation across all steps
+    const step1Err = validateHostStep(1);
+    const step2Err = validateHostStep(2);
+    const step3Err = validateHostStep(3);
+    const step4Err = validateHostStep(4);
+    const allErr = { ...step1Err, ...step2Err, ...step3Err, ...step4Err };
+
+    if (Object.keys(allErr).length > 0) {
+      setStepErrors(allErr);
+      if (Object.keys(step1Err).length > 0) setHostStep(1);
+      else if (Object.keys(step2Err).length > 0) setHostStep(2);
+      else if (Object.keys(step3Err).length > 0) setHostStep(3);
+      else setHostStep(4);
+      setHostSubmitError('Please complete all required fields before final submission.');
       return;
     }
 
-    try {
-      const created = submitHostRegistration(hostForm);
-      setHostSubmitSuccess(created);
-      refreshAllData();
-    } catch (err) {
-      setHostSubmitError(err.message || 'Submission error.');
-    }
+    const executeHostSubmit = () => {
+      setHostSubmitting(true);
+      try {
+        const created = submitHostRegistration(hostForm);
+        setHostSubmitSuccess(created);
+        setHostSubmitting(false);
+        setHostStep(1);
+        refreshAllData();
+        window.scrollTo({ top: 80, behavior: 'smooth' });
+      } catch (err) {
+        setHostSubmitting(false);
+        setHostSubmitError(err.message || 'Submission error. Please verify your details.');
+      }
+    };
+
+    requireAuth({
+      actionName: 'Submit host application',
+      message: 'Create an account or sign in to submit and track your official ROOTS Homestay host application.',
+      onAuthenticated: () => executeHostSubmit()
+    });
   };
 
   // Handle Admin Decision
@@ -488,29 +782,38 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
               <div className="filter-chips-list">
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={filterBreakfastOnly}
                   className={`chip-filter-btn ${filterBreakfastOnly ? 'active' : ''}`}
-                  onClick={() => setFilterBreakfastOnly(!filterBreakfastOnly)}
+                  onClick={() => setFilterBreakfastOnly(prev => !prev)}
                 >
                   <Coffee size={14} />
-                  Breakfast Included
+                  <span>Breakfast Included</span>
+                  <span className={`filter-switch-indicator ${filterBreakfastOnly ? 'on' : 'off'}`} aria-hidden="true" />
                 </button>
 
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={filterWifiOnly}
                   className={`chip-filter-btn ${filterWifiOnly ? 'active' : ''}`}
-                  onClick={() => setFilterWifiOnly(!filterWifiOnly)}
+                  onClick={() => setFilterWifiOnly(prev => !prev)}
                 >
                   <Wifi size={14} />
-                  Wi-Fi Available
+                  <span>Wi-Fi Available</span>
+                  <span className={`filter-switch-indicator ${filterWifiOnly ? 'on' : 'off'}`} aria-hidden="true" />
                 </button>
 
                 <button
                   type="button"
+                  role="switch"
+                  aria-checked={filterCulturalActivities}
                   className={`chip-filter-btn ${filterCulturalActivities ? 'active' : ''}`}
-                  onClick={() => setFilterCulturalActivities(!filterCulturalActivities)}
+                  onClick={() => setFilterCulturalActivities(prev => !prev)}
                 >
                   <Utensils size={14} />
-                  Cultural Workshops
+                  <span>Cultural Workshops</span>
+                  <span className={`filter-switch-indicator ${filterCulturalActivities ? 'on' : 'off'}`} aria-hidden="true" />
                 </button>
 
                 <select
@@ -709,27 +1012,47 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                 </span>
                 <span className="sample-badge">Village Immersion Program</span>
               </div>
-              <h2>Open Your Ancestral Home to Slow Travelers</h2>
+              <h2>Become a ROOTS Host</h2>
               <p>
-                ROOTS connects conscious travelers with community homestays. Share traditional meals,
-                oral folklore, and indigenous crafts while earning sustainable direct livelihood.
+                Open your home and share your regional culture, stories, and seasonal homecooked meals with
+                curious, mindful travellers from across the world while earning direct sustainable livelihood.
               </p>
             </div>
 
             {hostSubmitSuccess ? (
               <div className="host-success-screen">
-                <CheckCircle2 size={56} color="#10B981" />
+                <div className="success-icon-badge">
+                  <CheckCircle2 size={54} color="#10B981" />
+                </div>
                 <h3>Application Submitted for Review!</h3>
-                <p className="app-ref-text">Application Reference ID: <strong>{hostSubmitSuccess.id}</strong></p>
+                <p className="app-ref-text">
+                  Application Reference ID: <strong>{hostSubmitSuccess.id}</strong>
+                </p>
+
                 <div className="verification-reminder-box">
-                  <Shield size={20} color="#3478F6" />
+                  <Shield size={22} color="#3478F6" className="flex-shrink-0" />
                   <div>
-                    <strong>Verification Notice:</strong>
+                    <strong>Safety & Trust Notice — Pending Review:</strong>
                     <p>
-                      Your listing is stored with status <strong>Pending Verification</strong>.
-                      As part of our community safety charter, a local village coordinator or Dorbar Shnong elder
-                      will review your identity documents and safety checklist before the listing is activated in public discovery.
+                      Your listing is safely stored with status <strong>Application Under Review</strong>.
+                      To protect both hosts and guests, our community verification team and local village coordinators
+                      review ownership declarations, safety checklists, and phone credentials before activating your listing
+                      in public discovery. We never automatically mark applications as verified.
                     </p>
+                  </div>
+                </div>
+
+                <div className="host-summary-review card-subtle text-left" style={{ maxWidth: '640px', width: '100%', margin: '0 auto 20px' }}>
+                  <h4 style={{ color: 'var(--deep-blue)', marginBottom: '10px', fontSize: '1rem', fontWeight: '800' }}>
+                    Submitted Application Snapshot
+                  </h4>
+                  <div className="summary-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', fontSize: '0.88rem' }}>
+                    <div><strong>Homestay:</strong> {hostSubmitSuccess.name}</div>
+                    <div><strong>Host:</strong> {hostSubmitSuccess.host?.name}</div>
+                    <div><strong>General Area:</strong> {hostSubmitSuccess.generalLocation}</div>
+                    <div><strong>Nightly Rate:</strong> ₹{hostSubmitSuccess.nightlyRateINR}/night</div>
+                    <div><strong>Property Type:</strong> {hostSubmitSuccess.propertyType}</div>
+                    <div><strong>Status:</strong> <span className="badge-tag status-pending">Under Community Review</span></div>
                   </div>
                 </div>
 
@@ -739,6 +1062,7 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                     className="btn-primary"
                     onClick={() => {
                       setHostSubmitSuccess(null);
+                      setHostStep(1);
                       setActiveTab('admin');
                     }}
                   >
@@ -749,6 +1073,7 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                     className="btn-secondary"
                     onClick={() => {
                       setHostSubmitSuccess(null);
+                      setHostStep(1);
                       setActiveTab('discover');
                     }}
                   >
@@ -757,410 +1082,1097 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                 </div>
               </div>
             ) : (
-              <form onSubmit={handleHostFormSubmit} className="host-registration-form">
+              <div className="host-wizard-wrapper">
+                {/* Step Indicator & Progress Bar */}
+                <div className="wizard-progress-card">
+                  <div className="wizard-steps-nav" role="tablist">
+                    {[
+                      { num: 1, title: 'Host Profile', desc: 'Identity & Story' },
+                      { num: 2, title: 'Property Details', desc: 'Home & Rooms' },
+                      { num: 3, title: 'Amenities & Experiences', desc: 'Meals & Culture' },
+                      { num: 4, title: 'Photos & Review', desc: 'Preview & Submit' }
+                    ].map(step => {
+                      const isCompleted = hostStep > step.num;
+                      const isCurrent = hostStep === step.num;
+                      return (
+                        <button
+                          key={step.num}
+                          type="button"
+                          className={`wizard-step-tab ${isCurrent ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
+                          onClick={() => {
+                            if (step.num < hostStep) {
+                              setHostStep(step.num);
+                              setHostSubmitError('');
+                            } else if (step.num > hostStep) {
+                              const errs = validateHostStep(hostStep);
+                              if (Object.keys(errs).length === 0) {
+                                setHostStep(step.num);
+                              } else {
+                                setStepErrors(errs);
+                                setHostSubmitError('Please complete current required fields before skipping ahead.');
+                              }
+                            }
+                          }}
+                        >
+                          <div className="step-tab-num">
+                            {isCompleted ? <Check size={14} strokeWidth={3} /> : step.num}
+                          </div>
+                          <div className="step-tab-text">
+                            <span className="step-tab-title">{step.title}</span>
+                            <span className="step-tab-desc">{step.desc}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="wizard-progress-bar-bg" aria-hidden="true">
+                    <div
+                      className="wizard-progress-bar-fill"
+                      style={{ width: `${((hostStep - 1) / 3) * 100}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Form Error Banner */}
                 {hostSubmitError && (
-                  <div className="form-error-alert">
-                    <AlertCircle size={16} />
+                  <div className="form-error-alert" role="alert">
+                    <AlertCircle size={18} className="flex-shrink-0" />
                     <span>{hostSubmitError}</span>
                   </div>
                 )}
 
-                {/* Section 1: Host Profile */}
-                <div className="form-section-block">
-                  <h3 className="section-block-title">
-                    <span className="step-num">1</span> Host Profile & Eligibility
-                  </h3>
+                <form onSubmit={handleHostFormSubmit} className="host-registration-form" noValidate>
+                  {/* STEP 1: HOST PROFILE */}
+                  {hostStep === 1 && (
+                    <div className="form-step-content host-step1-container animate-fadeIn">
+                      {/* Step Header */}
+                      <div className="step-header-banner">
+                        <div className="step-header-top-row">
+                          <span className="step-pill">Step 1 of 4</span>
+                          <span className="step-pill-meta">Host Profile & Eligibility</span>
+                        </div>
+                        <h3>Tell us about yourself</h3>
+                        <p>Share your identity, the languages you speak with travellers, and confirm basic hosting eligibility.</p>
+                        
+                        {/* Subtle Privacy Reassurance */}
+                        <div className="privacy-reassurance-chip">
+                          <Shield size={14} className="flex-shrink-0 text-primary" />
+                          <span><strong>Privacy Reassurance:</strong> Your personal contact info is private and only verified community coordinators review this application. It will never be displayed publicly.</span>
+                        </div>
+                      </div>
 
-                  <div className="form-row-2">
-                    <div className="form-group">
-                      <label>Full Name *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g., Kunjamma Nair"
-                        value={hostForm.hostFullName}
-                        onChange={(e) => setHostForm({ ...hostForm, hostFullName: e.target.value })}
-                        className="form-control"
-                      />
+                      {/* Card 1: Host Identity & Spoken Languages */}
+                      <div className="host-profile-card">
+                        <div className="profile-card-header">
+                          <h4 className="profile-card-title">
+                            <User size={18} className="text-primary" />
+                            Host Identity & Languages Spoken
+                          </h4>
+                          <span className="profile-card-badge">Required</span>
+                        </div>
+
+                        <div className="form-row-2">
+                          <div className="form-group">
+                            <label htmlFor="hostFullName" className="form-label-bold">
+                              Full Legal or Preferred Name <span className="req-star">*</span>
+                            </label>
+                            <input
+                              id="hostFullName"
+                              type="text"
+                              required
+                              placeholder="e.g., Kunjamma Nair or Dorbar Elder John"
+                              value={hostForm.hostFullName}
+                              onChange={(e) => {
+                                setHostForm({ ...hostForm, hostFullName: e.target.value });
+                                if (stepErrors.hostFullName) {
+                                  setStepErrors({ ...stepErrors, hostFullName: undefined });
+                                }
+                              }}
+                              className={`form-control ${stepErrors.hostFullName ? 'input-error' : ''}`}
+                            />
+                            {stepErrors.hostFullName ? (
+                              <span className="field-error-msg">{stepErrors.hostFullName}</span>
+                            ) : (
+                              <small className="field-hint">The name guests will use when greeting you at your homestay.</small>
+                            )}
+                          </div>
+
+                          <div className="form-group">
+                            <label className="form-label-bold">
+                              Spoken Languages <span className="req-star">*</span>
+                            </label>
+                            
+                            {/* Search or Add Custom Language */}
+                            <div className="language-search-wrapper">
+                              <Search size={15} className="lang-search-icon" />
+                              <input
+                                type="text"
+                                placeholder="Filter languages or type new & press Enter..."
+                                value={languageSearch}
+                                onChange={(e) => setLanguageSearch(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleAddCustomLanguage();
+                                  }
+                                }}
+                                className="form-control lang-search-input"
+                              />
+                              {languageSearch.trim() && (
+                                <button
+                                  type="button"
+                                  className="btn-add-lang-pill"
+                                  onClick={handleAddCustomLanguage}
+                                >
+                                  + Add
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Selectable Wrapping Language Chips */}
+                            <div className="chip-selector-group language-chips-wrap">
+                              {(() => {
+                                const currentSelected = hostForm.languages
+                                  ? hostForm.languages.split(',').map(l => l.trim()).filter(Boolean)
+                                  : [];
+                                
+                                // Pool of options: standard pool filtered by query + already selected custom languages
+                                const filteredPool = AVAILABLE_LANGUAGES.filter(lang => 
+                                  lang.toLowerCase().includes(languageSearch.trim().toLowerCase())
+                                );
+                                
+                                // Union of pool and any custom selected languages
+                                const displayPool = Array.from(new Set([...filteredPool, ...currentSelected]));
+
+                                return displayPool.map(lang => {
+                                  const isSelected = currentSelected.some(l => l.toLowerCase() === lang.toLowerCase());
+                                  return (
+                                    <button
+                                      key={lang}
+                                      type="button"
+                                      className={`filter-chip lang-chip ${isSelected ? 'active' : ''}`}
+                                      onClick={() => handleToggleLanguage(lang)}
+                                      aria-pressed={isSelected}
+                                    >
+                                      {isSelected ? <Check size={13} className="text-primary" /> : null}
+                                      <span>{lang}</span>
+                                    </button>
+                                  );
+                                });
+                              })()}
+                            </div>
+
+                            {stepErrors.languages ? (
+                              <span className="field-error-msg">{stepErrors.languages}</span>
+                            ) : (
+                              <small className="field-hint">
+                                Selected: <strong>{hostForm.languages || 'None yet'}</strong> (Tap chips to add/remove)
+                              </small>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 2: Host Introduction & Ancestral Story */}
+                      <div className="host-profile-card">
+                        <div className="profile-card-header">
+                          <h4 className="profile-card-title">
+                            <Sparkles size={18} className="text-primary" />
+                            Host Introduction & Story
+                          </h4>
+                          <span className="char-count-badge">
+                            {(hostForm.hostIntro || '').length} / 600
+                          </span>
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="hostIntro" className="form-label-bold">
+                            Welcome Note & Cultural Background
+                          </label>
+                          <textarea
+                            id="hostIntro"
+                            rows="4"
+                            maxLength={600}
+                            placeholder="Share a few sentences about your family, your relationship to the land, traditional recipes passed down, and what makes your village special..."
+                            value={hostForm.hostIntro || ''}
+                            onChange={(e) => setHostForm({ ...hostForm, hostIntro: e.target.value })}
+                            className="form-control host-intro-textarea"
+                          />
+                          
+                          {/* Helpful Story Starter Prompts */}
+                          <div className="intro-prompts-row">
+                            <span className="intro-prompts-label">Need inspiration? Click to add:</span>
+                            <div className="intro-prompts-chips">
+                              <button
+                                type="button"
+                                className="intro-prompt-btn"
+                                onClick={() => handleInsertIntroPrompt('Our family has cultivated these lands for three generations, preserving ancestral heritage.')}
+                              >
+                                + Family roots
+                              </button>
+                              <button
+                                type="button"
+                                className="intro-prompt-btn"
+                                onClick={() => handleInsertIntroPrompt('We love serving traditional homecooked earthenware meals with organic spices.')}
+                              >
+                                + Traditional meals
+                              </button>
+                              <button
+                                type="button"
+                                className="intro-prompt-btn"
+                                onClick={() => handleInsertIntroPrompt('Guests enjoy evening folk stories and quiet walks through sacred groves.')}
+                              >
+                                + Local folklore
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 3: Profile Photo */}
+                      <div className="host-profile-card">
+                        <div className="profile-card-header">
+                          <h4 className="profile-card-title">
+                            <Camera size={18} className="text-primary" />
+                            Host Profile Photo
+                          </h4>
+                          <span className="profile-card-badge-optional">Optional</span>
+                        </div>
+
+                        <div className="avatar-uploader-layout">
+                          {/* Photo Preview Circle */}
+                          <div className="avatar-preview-wrapper">
+                            {hostForm.hostAvatar ? (
+                              <img
+                                src={hostForm.hostAvatar}
+                                alt="Host avatar preview"
+                                className="avatar-preview-img"
+                              />
+                            ) : (
+                              <div className="avatar-placeholder-box">
+                                <User size={40} className="avatar-placeholder-icon" />
+                                <span>Default Avatar</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Upload and Fallback Controls */}
+                          <div className="avatar-controls-col">
+                            <div className="avatar-file-upload-actions">
+                              <label htmlFor="avatar-file-input" className="btn-upload-file">
+                                <Upload size={16} />
+                                <span>Upload photo from device</span>
+                                <input
+                                  id="avatar-file-input"
+                                  type="file"
+                                  accept="image/jpeg,image/png,image/webp"
+                                  className="hidden-file-input"
+                                  onChange={handleAvatarFileUpload}
+                                />
+                              </label>
+
+                              {hostForm.hostAvatar && (
+                                <button
+                                  type="button"
+                                  className="btn-remove-avatar"
+                                  onClick={() => {
+                                    setHostForm({ ...hostForm, hostAvatar: '' });
+                                    setAvatarError('');
+                                  }}
+                                >
+                                  <Trash2 size={14} /> Remove photo
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                className="btn-default-avatar"
+                                onClick={() => {
+                                  setHostForm({
+                                    ...hostForm,
+                                    hostAvatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=300&q=80'
+                                  });
+                                  setAvatarError('');
+                                }}
+                              >
+                                Use curated portrait
+                              </button>
+                            </div>
+
+                            {avatarError && (
+                              <span className="field-error-msg">{avatarError}</span>
+                            )}
+
+                            {/* Or direct URL fallback */}
+                            <div className="avatar-url-fallback">
+                              <label htmlFor="hostAvatarUrl" className="field-hint">
+                                Or enter direct image URL:
+                              </label>
+                              <input
+                                id="hostAvatarUrl"
+                                type="url"
+                                placeholder="https://images.unsplash.com/..."
+                                value={hostForm.hostAvatar || ''}
+                                onChange={(e) => {
+                                  setHostForm({ ...hostForm, hostAvatar: e.target.value });
+                                  setAvatarError('');
+                                }}
+                                className="form-control form-control-sm"
+                              />
+                            </div>
+                            <small className="field-hint">
+                              Accepted formats: JPG, PNG, WebP (max 5MB). A warm, authentic portrait helps travellers connect before arrival.
+                            </small>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Host Eligibility & Consent Confirmations */}
+                      <div className="host-profile-card">
+                        <div className="profile-card-header">
+                          <h4 className="profile-card-title">
+                            <Shield size={18} className="text-primary" />
+                            Eligibility & Legal Confirmations
+                          </h4>
+                          <span className="profile-card-badge">Confirmations</span>
+                        </div>
+
+                        <p className="eligibility-intro-text">
+                          To maintain traveller safety and cultural authenticity, ROOTS hosts must meet these core criteria before community verification:
+                        </p>
+
+                        <div className="eligibility-cards-list">
+                          {/* Confirmation 1: 18+ Required */}
+                          <label className={`eligibility-item-card ${stepErrors.age18Plus ? 'checkbox-error' : ''} ${hostForm.age18Plus ? 'checked-card' : ''}`}>
+                            <div className="eligibility-checkbox-wrapper">
+                              <input
+                                type="checkbox"
+                                id="age18PlusCheck"
+                                checked={hostForm.age18Plus}
+                                onChange={(e) => {
+                                  setHostForm({ ...hostForm, age18Plus: e.target.checked });
+                                  if (stepErrors.age18Plus) {
+                                    setStepErrors({ ...stepErrors, age18Plus: undefined });
+                                  }
+                                }}
+                                className="accessible-checkbox"
+                              />
+                            </div>
+                            <div className="eligibility-text-content">
+                              <div className="eligibility-card-headline">
+                                <strong>Legal Age Eligibility (18+ Years)</strong>
+                                <span className="badge-required-pill">Required</span>
+                              </div>
+                              <p>I confirm that I am at least 18 years of age and legally authorized by family, panchayat, or property title to host travellers on this property.</p>
+                            </div>
+                          </label>
+                          {stepErrors.age18Plus && (
+                            <span className="field-error-msg">{stepErrors.age18Plus}</span>
+                          )}
+
+                          {/* Confirmation 2: On-Premises Presence */}
+                          <label className={`eligibility-item-card ${hostForm.hostLivesOnProperty ? 'checked-card' : ''}`}>
+                            <div className="eligibility-checkbox-wrapper">
+                              <input
+                                type="checkbox"
+                                id="hostLivesOnPropertyCheck"
+                                checked={hostForm.hostLivesOnProperty}
+                                onChange={(e) => setHostForm({ ...hostForm, hostLivesOnProperty: e.target.checked })}
+                                className="accessible-checkbox"
+                              />
+                            </div>
+                            <div className="eligibility-text-content">
+                              <div className="eligibility-card-headline">
+                                <strong>On-Premises Host or Family Presence</strong>
+                                <span className="badge-recommended-pill">Recommended</span>
+                              </div>
+                              <p>I (or members of my family) reside on or adjacent to this property during guest stays to welcome guests in person, share homecooked meals, and offer authentic local guidance.</p>
+                            </div>
+                          </label>
+
+                          {/* Confirmation 3: Direct Reachability */}
+                          <label className={`eligibility-item-card ${hostForm.contactVerified ? 'checked-card' : ''}`}>
+                            <div className="eligibility-checkbox-wrapper">
+                              <input
+                                type="checkbox"
+                                id="contactVerifiedCheck"
+                                checked={hostForm.contactVerified}
+                                onChange={(e) => setHostForm({ ...hostForm, contactVerified: e.target.checked })}
+                                className="accessible-checkbox"
+                              />
+                            </div>
+                            <div className="eligibility-text-content">
+                              <div className="eligibility-card-headline">
+                                <strong>Direct WhatsApp / Phone Reachability</strong>
+                                <span className="badge-standard-pill">Active Hosting</span>
+                              </div>
+                              <p>I agree to receive booking inquiries from verified travellers and respond within 24 hours to coordinate check-in details and dietary preferences.</p>
+                            </div>
+                          </label>
+                        </div>
+                      </div>
                     </div>
+                  )}
 
-                    <div className="form-group">
-                      <label>Languages Spoken (comma separated) *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g., Malayalam, English, Hindi"
-                        value={hostForm.languages}
-                        onChange={(e) => setHostForm({ ...hostForm, languages: e.target.value })}
-                        className="form-control"
-                      />
-                    </div>
-                  </div>
+                  {/* STEP 2: PROPERTY DETAILS */}
+                  {hostStep === 2 && (
+                    <div className="form-step-content animate-fadeIn">
+                      <div className="step-header-banner">
+                        <span className="step-pill">Step 2 of 4</span>
+                        <h3>Property & Accommodation Details</h3>
+                        <p>Describe your homestay structure, destination, guest room capacity, and accessibility.</p>
+                      </div>
 
-                  <div className="form-group">
-                    <label>Short Host Introduction & Ancestral Story</label>
-                    <textarea
-                      rows="3"
-                      placeholder="Share a few sentences about your family, your relationship to the land, and what guests will experience..."
-                      value={hostForm.hostIntro}
-                      onChange={(e) => setHostForm({ ...hostForm, hostIntro: e.target.value })}
-                      className="form-control"
-                    />
-                  </div>
-
-                  <div className="eligibility-checkbox-group">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={hostForm.age18Plus}
-                        onChange={(e) => setHostForm({ ...hostForm, age18Plus: e.target.checked })}
-                      />
-                      <span>I confirm that I am at least 18 years of age and legally eligible to host guests. *</span>
-                    </label>
-
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={hostForm.hostLivesOnProperty}
-                        onChange={(e) => setHostForm({ ...hostForm, hostLivesOnProperty: e.target.checked })}
-                      />
-                      <span>I (or my family) reside on this property to welcome guests in person.</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Section 2: Property Details */}
-                <div className="form-section-block">
-                  <h3 className="section-block-title">
-                    <span className="step-num">2</span> Property & Accommodation Details
-                  </h3>
-
-                  <div className="form-row-2">
-                    <div className="form-group">
-                      <label>Homestay Name *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g., Ka Mei's Cardamom Foothill Cottage"
-                        value={hostForm.propertyName}
-                        onChange={(e) => setHostForm({ ...hostForm, propertyName: e.target.value })}
-                        className="form-control"
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Destination Hub *</label>
-                      <select
-                        value={hostForm.destinationId}
-                        onChange={(e) => setHostForm({ ...hostForm, destinationId: e.target.value })}
-                        className="form-control"
-                      >
-                        <option value="varkala">Varkala & Coastal Kerala</option>
-                        <option value="meghalaya">Nongriat & Cherrapunji (Meghalaya)</option>
-                        <option value="spiti">Spiti Valley (Himachal)</option>
-                        <option value="coorg">Coorg Highlands (Karnataka)</option>
-                        <option value="hampi">Hampi & Anegundi (Karnataka)</option>
-                        <option value="wayanad">Wayanad Rainforest (Kerala)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>General Location (Village / Landmark / District) *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g., Kakkabe Foothills, Kodagu, Karnataka (Do not enter exact house number)"
-                      value={hostForm.generalLocation}
-                      onChange={(e) => setHostForm({ ...hostForm, generalLocation: e.target.value })}
-                      className="form-control"
-                    />
-                    <small className="field-hint">
-                      Safety Notice: Exact house numbers and private directions are only disclosed after host accepts a confirmed booking.
-                    </small>
-                  </div>
-
-                  <div className="form-row-4">
-                    <div className="form-group">
-                      <label>Property Style</label>
-                      <select
-                        value={hostForm.propertyType}
-                        onChange={(e) => setHostForm({ ...hostForm, propertyType: e.target.value })}
-                        className="form-control"
-                      >
-                        <option value="Ancestral Courtyard">Ancestral Courtyard</option>
-                        <option value="Bamboo Stilt Home">Bamboo Stilt Home</option>
-                        <option value="Heritage Farm Cottage">Heritage Farm Cottage</option>
-                        <option value="Mudbrick Mountain Retreat">Mudbrick Mountain Retreat</option>
-                        <option value="Village Homestay">Village Homestay</option>
-                      </select>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Rooms</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="10"
-                        value={hostForm.rooms}
-                        onChange={(e) => setHostForm({ ...hostForm, rooms: e.target.value })}
-                        className="form-control"
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Beds</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="15"
-                        value={hostForm.beds}
-                        onChange={(e) => setHostForm({ ...hostForm, beds: e.target.value })}
-                        className="form-control"
-                      />
-                    </div>
-
-                    <div className="form-group">
-                      <label>Max Guests</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="20"
-                        value={hostForm.maxGuests}
-                        onChange={(e) => setHostForm({ ...hostForm, maxGuests: e.target.value })}
-                        className="form-control"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Bathroom & Privacy Arrangements</label>
-                    <select
-                      value={hostForm.bathroomPrivacy}
-                      onChange={(e) => setHostForm({ ...hostForm, bathroomPrivacy: e.target.value })}
-                      className="form-control"
-                    >
-                      <option value="Private Ensuite Washroom">Private Ensuite Washroom</option>
-                      <option value="Shared Family Washroom">Shared Family Washroom</option>
-                      <option value="Detached Washroom (Covered Walkway)">Detached Washroom (Covered Walkway)</option>
-                      <option value="Dry Composting Spitian Washroom">Dry Composting Spitian Washroom</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>Accessibility & Physical Access Notes</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Ground floor entrance with 2 stone veranda steps. Narrow doorways."
-                      value={hostForm.accessibility}
-                      onChange={(e) => setHostForm({ ...hostForm, accessibility: e.target.value })}
-                      className="form-control"
-                    />
-                  </div>
-                </div>
-
-                {/* Section 3: Local Experiences & Meals */}
-                <div className="form-section-block">
-                  <h3 className="section-block-title">
-                    <span className="step-num">3</span> Local Experiences & Homecooked Meals
-                  </h3>
-
-                  <div className="form-group">
-                    <label>Cultural Workshops & Walks You Can Offer (comma separated)</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Clay pot fish cooking, Bamboo basketry lesson, Dawn birdwatching canoe"
-                      value={hostForm.culturalActivities}
-                      onChange={(e) => setHostForm({ ...hostForm, culturalActivities: e.target.value })}
-                      className="form-control"
-                    />
-                  </div>
-
-                  <div className="form-row-2">
-                    <div className="form-group">
-                      <label className="checkbox-label mb-2">
-                        <input
-                          type="checkbox"
-                          checked={hostForm.breakfastIncluded}
-                          onChange={(e) => setHostForm({ ...hostForm, breakfastIncluded: e.target.checked })}
-                        />
-                        <span>Traditional Homemade Breakfast Included in Nightly Rate</span>
-                      </label>
-                    </div>
-
-                    <div className="form-group">
-                      <label className="checkbox-label mb-2">
-                        <input
-                          type="checkbox"
-                          checked={hostForm.dinnerAvailable}
-                          onChange={(e) => setHostForm({ ...hostForm, dinnerAvailable: e.target.checked })}
-                        />
-                        <span>Traditional Dinner Available upon Request</span>
-                      </label>
-                      {hostForm.dinnerAvailable && (
-                        <div className="mt-2">
-                          <label>Dinner Cost per Person (INR)</label>
+                      <div className="form-row-2">
+                        <div className="form-group">
+                          <label htmlFor="propertyName">
+                            Homestay Name <span className="req-star">*</span>
+                          </label>
                           <input
+                            id="propertyName"
+                            type="text"
+                            required
+                            placeholder="e.g., Ka Mei's Cardamom Foothill Cottage"
+                            value={hostForm.propertyName}
+                            onChange={(e) => {
+                              setHostForm({ ...hostForm, propertyName: e.target.value });
+                              if (stepErrors.propertyName) {
+                                setStepErrors({ ...stepErrors, propertyName: undefined });
+                              }
+                            }}
+                            className={`form-control ${stepErrors.propertyName ? 'input-error' : ''}`}
+                          />
+                          {stepErrors.propertyName && (
+                            <span className="field-error-msg">{stepErrors.propertyName}</span>
+                          )}
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="destinationId">
+                            Destination Hub <span className="req-star">*</span>
+                          </label>
+                          <select
+                            id="destinationId"
+                            value={hostForm.destinationId}
+                            onChange={(e) => setHostForm({ ...hostForm, destinationId: e.target.value })}
+                            className="form-control"
+                          >
+                            <option value="varkala">Varkala & Coastal Kerala</option>
+                            <option value="meghalaya">Nongriat & Cherrapunji (Meghalaya)</option>
+                            <option value="spiti">Spiti Valley (Himachal)</option>
+                            <option value="coorg">Coorg Highlands (Karnataka)</option>
+                            <option value="hampi">Hampi & Anegundi (Karnataka)</option>
+                            <option value="wayanad">Wayanad Rainforest (Kerala)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="generalLocation">
+                          General Location (Village / Landmark / District) <span className="req-star">*</span>
+                        </label>
+                        <input
+                          id="generalLocation"
+                          type="text"
+                          required
+                          placeholder="e.g., Kakkabe Foothills, Kodagu, Karnataka (Do NOT enter house number)"
+                          value={hostForm.generalLocation}
+                          onChange={(e) => {
+                            setHostForm({ ...hostForm, generalLocation: e.target.value });
+                            if (stepErrors.generalLocation) {
+                              setStepErrors({ ...stepErrors, generalLocation: undefined });
+                            }
+                          }}
+                          className={`form-control ${stepErrors.generalLocation ? 'input-error' : ''}`}
+                        />
+                        {stepErrors.generalLocation && (
+                          <span className="field-error-msg">{stepErrors.generalLocation}</span>
+                        )}
+                        <div className="privacy-badge-note">
+                          <Lock size={14} color="#3478F6" />
+                          <span>
+                            <strong>Privacy Shield:</strong> Exact house numbers and private GPS coordinates are NEVER
+                            published on the web. They are disclosed to guests only after you accept their booking request.
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="form-row-4">
+                        <div className="form-group">
+                          <label htmlFor="propertyType">Property Style</label>
+                          <select
+                            id="propertyType"
+                            value={hostForm.propertyType}
+                            onChange={(e) => setHostForm({ ...hostForm, propertyType: e.target.value })}
+                            className="form-control"
+                          >
+                            <option value="Ancestral Courtyard">Ancestral Courtyard</option>
+                            <option value="Bamboo Stilt Home">Bamboo Stilt Home</option>
+                            <option value="Heritage Farm Cottage">Heritage Farm Cottage</option>
+                            <option value="Mudbrick Mountain Retreat">Mudbrick Mountain Retreat</option>
+                            <option value="Village Homestay">Village Homestay</option>
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="rooms">
+                            Guest Bedrooms <span className="req-star">*</span>
+                          </label>
+                          <input
+                            id="rooms"
                             type="number"
-                            min="0"
-                            step="50"
-                            value={hostForm.dinnerCostINR}
-                            onChange={(e) => setHostForm({ ...hostForm, dinnerCostINR: e.target.value })}
+                            min="1"
+                            max="10"
+                            value={hostForm.rooms}
+                            onChange={(e) => setHostForm({ ...hostForm, rooms: e.target.value })}
                             className="form-control"
                           />
                         </div>
-                      )}
+
+                        <div className="form-group">
+                          <label htmlFor="beds">Beds Available</label>
+                          <input
+                            id="beds"
+                            type="number"
+                            min="1"
+                            max="15"
+                            value={hostForm.beds}
+                            onChange={(e) => setHostForm({ ...hostForm, beds: e.target.value })}
+                            className="form-control"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="maxGuests">Max Guests</label>
+                          <input
+                            id="maxGuests"
+                            type="number"
+                            min="1"
+                            max="20"
+                            value={hostForm.maxGuests}
+                            onChange={(e) => setHostForm({ ...hostForm, maxGuests: e.target.value })}
+                            className="form-control"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-row-2">
+                        <div className="form-group">
+                          <label htmlFor="bathroomPrivacy">Bathroom & Privacy Arrangements</label>
+                          <select
+                            id="bathroomPrivacy"
+                            value={hostForm.bathroomPrivacy}
+                            onChange={(e) => setHostForm({ ...hostForm, bathroomPrivacy: e.target.value })}
+                            className="form-control"
+                          >
+                            <option value="Private Ensuite Washroom">Private Ensuite Washroom</option>
+                            <option value="Shared Family Washroom">Shared Family Washroom</option>
+                            <option value="Detached Washroom (Covered Walkway)">Detached Washroom (Covered Walkway)</option>
+                            <option value="Dry Composting Spitian Washroom">Dry Composting Spitian Washroom</option>
+                          </select>
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="accessibility">Accessibility & Mobility Notes</label>
+                          <input
+                            id="accessibility"
+                            type="text"
+                            placeholder="e.g., Ground floor entrance, 2 veranda stone steps, wide doors"
+                            value={hostForm.accessibility}
+                            onChange={(e) => setHostForm({ ...hostForm, accessibility: e.target.value })}
+                            className="form-control"
+                          />
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <div className="form-group">
-                    <label>Meals Specialty & Description</label>
-                    <input
-                      type="text"
-                      placeholder="e.g., Steamed appams, wild pepper rasam, organic vegetable thali on banana leaves."
-                      value={hostForm.mealsDescription}
-                      onChange={(e) => setHostForm({ ...hostForm, mealsDescription: e.target.value })}
-                      className="form-control"
-                    />
-                  </div>
-                </div>
+                {/* STEP 3: AMENITIES & EXPERIENCES */}
+                  {hostStep === 3 && (
+                    <div className="form-step-content animate-fadeIn">
+                      <div className="step-header-banner">
+                        <span className="step-pill">Step 3 of 4</span>
+                        <h3>Amenities, Meals & Experiences</h3>
+                        <p>Highlight the facilities, homecooked traditions, cultural activities, and nightly pricing.</p>
+                      </div>
 
-                {/* Section 4: Pricing & Rules */}
-                <div className="form-section-block">
-                  <h3 className="section-block-title">
-                    <span className="step-num">4</span> Nightly Rate & House Rules
-                  </h3>
+                      <div className="form-group">
+                        <label>Available Homestay Facilities</label>
+                        <p className="field-hint-sub">Select all amenities available to guests:</p>
+                        <div className="chip-selector-group">
+                          {[
+                            'Homecooked Meals', 'Hot Water', 'Wi-Fi', 'Solar Backup',
+                            'Filtered Water', 'Veranda Seating', 'Organic Kitchen Garden',
+                            'Fireplace / Bukhari', 'Bonfire Pit', 'Pet Friendly', 'Free Parking',
+                            'Washing Machine', 'Mosquito Netting'
+                          ].map(amenity => {
+                            const isSelected = hostForm.amenities?.includes(amenity);
+                            return (
+                              <button
+                                key={amenity}
+                                type="button"
+                                className={`filter-chip ${isSelected ? 'active' : ''}`}
+                                onClick={() => {
+                                  const current = hostForm.amenities || [];
+                                  if (isSelected) {
+                                    setHostForm({ ...hostForm, amenities: current.filter(a => a !== amenity) });
+                                  } else {
+                                    setHostForm({ ...hostForm, amenities: [...current, amenity] });
+                                  }
+                                }}
+                              >
+                                {amenity}
+                                {isSelected && <Check size={12} className="ml-1" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
-                  <div className="form-row-3">
-                    <div className="form-group">
-                      <label>Nightly Rate (INR) *</label>
-                      <input
-                        type="number"
-                        required
-                        min="500"
-                        max="20000"
-                        step="100"
-                        value={hostForm.nightlyRateINR}
-                        onChange={(e) => setHostForm({ ...hostForm, nightlyRateINR: e.target.value })}
-                        className="form-control"
-                      />
+                      <div className="card-subtle mb-4">
+                        <h4 className="card-subtle-title">
+                          <Utensils size={18} color="#3478F6" />
+                          Homecooked Traditional Food
+                        </h4>
+
+                        <div className="form-row-2">
+                          <label className="checkbox-label-card">
+                            <input
+                              type="checkbox"
+                              checked={hostForm.breakfastIncluded}
+                              onChange={(e) => setHostForm({ ...hostForm, breakfastIncluded: e.target.checked })}
+                            />
+                            <div>
+                              <strong>Traditional Breakfast Included</strong>
+                              <p>Included in the nightly rate (e.g., idiyappam, poori bhaji, Tsampa porridge).</p>
+                            </div>
+                          </label>
+
+                          <label className="checkbox-label-card">
+                            <input
+                              type="checkbox"
+                              checked={hostForm.dinnerAvailable}
+                              onChange={(e) => setHostForm({ ...hostForm, dinnerAvailable: e.target.checked })}
+                            />
+                            <div>
+                              <strong>Traditional Dinner upon Request</strong>
+                              <p>Guests can request wholesome family dinner prepared with local ingredients.</p>
+                            </div>
+                          </label>
+                        </div>
+
+                        {hostForm.dinnerAvailable && (
+                          <div className="form-group mt-3" style={{ maxWidth: '300px' }}>
+                            <label htmlFor="dinnerCostINR">Dinner Cost per Person (INR)</label>
+                            <input
+                              id="dinnerCostINR"
+                              type="number"
+                              min="0"
+                              step="50"
+                              value={hostForm.dinnerCostINR}
+                              onChange={(e) => setHostForm({ ...hostForm, dinnerCostINR: e.target.value })}
+                              className="form-control"
+                            />
+                          </div>
+                        )}
+
+                        <div className="form-group mt-3">
+                          <label htmlFor="mealsDescription">Meals Specialty & Description</label>
+                          <input
+                            id="mealsDescription"
+                            type="text"
+                            placeholder="e.g., Steamed appams, wild pepper rasam, organic vegetable thali on banana leaves."
+                            value={hostForm.mealsDescription}
+                            onChange={(e) => setHostForm({ ...hostForm, mealsDescription: e.target.value })}
+                            className="form-control"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="culturalActivities">
+                          Cultural Experiences & Guided Activities (comma separated)
+                        </label>
+                        <input
+                          id="culturalActivities"
+                          type="text"
+                          placeholder="e.g., Cooking demonstration, Village walk, Living root bridge trek, Clay pottery"
+                          value={hostForm.culturalActivities}
+                          onChange={(e) => setHostForm({ ...hostForm, culturalActivities: e.target.value })}
+                          className="form-control"
+                        />
+                        <small className="field-hint">
+                          Slow travellers seek direct engagement with local craftspeople and landscapes.
+                        </small>
+                      </div>
+
+                      <div className="form-row-3">
+                        <div className="form-group">
+                          <label htmlFor="nightlyRateINR">
+                            Nightly Rate (INR) <span className="req-star">*</span>
+                          </label>
+                          <div className="input-with-prefix">
+                            <span className="input-prefix">₹</span>
+                            <input
+                              id="nightlyRateINR"
+                              type="number"
+                              required
+                              min="500"
+                              max="20000"
+                              step="100"
+                              value={hostForm.nightlyRateINR}
+                              onChange={(e) => {
+                                setHostForm({ ...hostForm, nightlyRateINR: e.target.value });
+                                if (stepErrors.nightlyRateINR) {
+                                  setStepErrors({ ...stepErrors, nightlyRateINR: undefined });
+                                }
+                              }}
+                              className={`form-control ${stepErrors.nightlyRateINR ? 'input-error' : ''}`}
+                            />
+                          </div>
+                          {stepErrors.nightlyRateINR && (
+                            <span className="field-error-msg">{stepErrors.nightlyRateINR}</span>
+                          )}
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="cleaningFeeINR">Community Fund / Cleaning Fee (INR)</label>
+                          <div className="input-with-prefix">
+                            <span className="input-prefix">₹</span>
+                            <input
+                              id="cleaningFeeINR"
+                              type="number"
+                              min="0"
+                              max="1000"
+                              step="50"
+                              value={hostForm.cleaningFeeINR}
+                              onChange={(e) => setHostForm({ ...hostForm, cleaningFeeINR: e.target.value })}
+                              className="form-control"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="cancellationPolicy">Cancellation Policy</label>
+                          <select
+                            id="cancellationPolicy"
+                            value={hostForm.cancellationPolicy}
+                            onChange={(e) => setHostForm({ ...hostForm, cancellationPolicy: e.target.value })}
+                            className="form-control"
+                          >
+                            <option value="Flexible: Free cancellation up to 48 hours before check-in.">Flexible (Up to 48h)</option>
+                            <option value="Moderate: Free cancellation up to 5 days before check-in.">Moderate (Up to 5 days)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="form-row-2">
+                        <div className="form-group">
+                          <label htmlFor="checkInTime">Check-In Time</label>
+                          <input
+                            id="checkInTime"
+                            type="text"
+                            value={hostForm.checkInTime}
+                            onChange={(e) => setHostForm({ ...hostForm, checkInTime: e.target.value })}
+                            className="form-control"
+                            placeholder="e.g., 01:00 PM"
+                          />
+                        </div>
+
+                        <div className="form-group">
+                          <label htmlFor="checkOutTime">Check-Out Time</label>
+                          <input
+                            id="checkOutTime"
+                            type="text"
+                            value={hostForm.checkOutTime}
+                            onChange={(e) => setHostForm({ ...hostForm, checkOutTime: e.target.value })}
+                            className="form-control"
+                            placeholder="e.g., 11:00 AM"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="form-group">
+                        <label htmlFor="houseRules">Guest House Rules (one per line)</label>
+                        <textarea
+                          id="houseRules"
+                          rows="3"
+                          value={hostForm.houseRules}
+                          onChange={(e) => setHostForm({ ...hostForm, houseRules: e.target.value })}
+                          className="form-control"
+                          placeholder="Quiet hours after 10 PM&#10;No single-use plastic&#10;Remove footwear at entrance"
+                        />
+                      </div>
                     </div>
+                  )}
 
-                    <div className="form-group">
-                      <label>Cleaning / Community Fund Fee (INR)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="1000"
-                        step="50"
-                        value={hostForm.cleaningFeeINR}
-                        onChange={(e) => setHostForm({ ...hostForm, cleaningFeeINR: e.target.value })}
-                        className="form-control"
-                      />
+                  {/* STEP 4: PHOTOS, REVIEW & SUBMISSION */}
+                  {hostStep === 4 && (
+                    <div className="form-step-content animate-fadeIn">
+                      <div className="step-header-banner">
+                        <span className="step-pill">Step 4 of 4</span>
+                        <h3>Photos, Review & Final Submission</h3>
+                        <p>Upload photo URLs, review your application summary, and submit for community review.</p>
+                      </div>
+
+                      <div className="card-subtle mb-4">
+                        <h4 className="card-subtle-title">
+                          <Camera size={18} color="#3478F6" />
+                          Homestay Photos
+                        </h4>
+                        <p className="field-hint-sub">Add high-quality image URLs of the guest bedroom, dining area, or surrounding garden.</p>
+
+                        <div className="photo-add-bar">
+                          <input
+                            type="url"
+                            placeholder="https://images.unsplash.com/photo-..."
+                            value={newPhotoUrl}
+                            onChange={(e) => setNewPhotoUrl(e.target.value)}
+                            className="form-control flex-1"
+                          />
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => {
+                              if (newPhotoUrl.trim()) {
+                                setHostForm({
+                                  ...hostForm,
+                                  photos: [...(hostForm.photos || []), newPhotoUrl.trim()]
+                                });
+                                setNewPhotoUrl('');
+                                if (stepErrors.photos) {
+                                  setStepErrors({ ...stepErrors, photos: undefined });
+                                }
+                              }
+                            }}
+                          >
+                            <Plus size={16} /> Add Photo
+                          </button>
+                        </div>
+
+                        {stepErrors.photos && (
+                          <span className="field-error-msg">{stepErrors.photos}</span>
+                        )}
+
+                        <div className="photo-preview-grid">
+                          {hostForm.photos && hostForm.photos.length > 0 ? (
+                            hostForm.photos.map((url, idx) => (
+                              <div key={idx} className="photo-preview-card">
+                                <img
+                                  src={url}
+                                  alt={`Homestay preview ${idx + 1}`}
+                                  onError={(e) => {
+                                    e.target.src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80';
+                                  }}
+                                />
+                                <div className="photo-preview-badge">
+                                  {idx === 0 ? 'Cover Photo' : `Photo ${idx + 1}`}
+                                </div>
+                                {hostForm.photos.length > 1 && (
+                                  <button
+                                    type="button"
+                                    className="photo-remove-btn"
+                                    title="Remove this photo"
+                                    onClick={() => {
+                                      const filtered = hostForm.photos.filter((_, i) => i !== idx);
+                                      setHostForm({ ...hostForm, photos: filtered });
+                                    }}
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <div className="photo-empty-box">
+                              <Image size={32} color="#94A3B8" />
+                              <span>No photos added yet. Add at least one image URL above.</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="form-section-block verification-sub-box mb-4">
+                        <h4 className="section-block-title" style={{ fontSize: '1.05rem', marginBottom: '8px' }}>
+                          <Shield size={18} color="#3478F6" />
+                          Verification & Safety Compliance Declarations
+                        </h4>
+                        <p className="sub-box-desc">
+                          Sensitive government identification numbers are stored confidentially and are never displayed publicly.
+                        </p>
+
+                        <div className="form-row-2">
+                          <div className="form-group">
+                            <label htmlFor="govIdType">Government Identity Proof Type</label>
+                            <input
+                              id="govIdType"
+                              type="text"
+                              value={hostForm.govIdType}
+                              onChange={(e) => setHostForm({ ...hostForm, govIdType: e.target.value })}
+                              className="form-control"
+                            />
+                            <small className="field-hint">Masked reference (e.g. Aadhaar / Voter ID / Passport)</small>
+                          </div>
+
+                          <div className="form-group">
+                            <label htmlFor="ownershipDocType">Permission / Ownership Document Type</label>
+                            <input
+                              id="ownershipDocType"
+                              type="text"
+                              value={hostForm.ownershipDocType}
+                              onChange={(e) => setHostForm({ ...hostForm, ownershipDocType: e.target.value })}
+                              className="form-control"
+                            />
+                            <small className="field-hint">Village Panchayat letter or property tax document</small>
+                          </div>
+                        </div>
+
+                        <div className="safety-declarations-list">
+                          <label className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={hostForm.hasFirstAidKit}
+                              onChange={(e) => setHostForm({ ...hostForm, hasFirstAidKit: e.target.checked })}
+                            />
+                            <span>Basic first aid kit is maintained on premises with clean bandages and antiseptic.</span>
+                          </label>
+
+                          <label className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={hostForm.hasFireExtinguisher}
+                              onChange={(e) => setHostForm({ ...hostForm, hasFireExtinguisher: e.target.checked })}
+                            />
+                            <span>Fire safety precaution (fire extinguisher or sand bucket) is accessible in cooking area.</span>
+                          </label>
+
+                          <label className="checkbox-label">
+                            <input
+                              type="checkbox"
+                              checked={hostForm.potableWaterCertified}
+                              onChange={(e) => setHostForm({ ...hostForm, potableWaterCertified: e.target.checked })}
+                            />
+                            <span>Purified, boiled, or tested drinking water is provided to guests in clean copper or glass jugs.</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      <div className="host-summary-review card-white mb-4">
+                        <div className="summary-card-header">
+                          <h4 style={{ color: 'var(--deep-blue)', margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>
+                            Application Review Summary
+                          </h4>
+                          <span className="review-status-pill">
+                            Status Upon Submission: Under Review
+                          </span>
+                        </div>
+
+                        <div className="summary-details-grid">
+                          <div className="summary-item">
+                            <span className="summary-label">Host Name:</span>
+                            <span className="summary-val">{hostForm.hostFullName || '—'}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Languages:</span>
+                            <span className="summary-val">{hostForm.languages || '—'}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Homestay Name:</span>
+                            <span className="summary-val">{hostForm.propertyName || '—'}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">General Area:</span>
+                            <span className="summary-val">{hostForm.generalLocation || '—'}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Property Style:</span>
+                            <span className="summary-val">{hostForm.propertyType}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Bedrooms / Max Guests:</span>
+                            <span className="summary-val">{hostForm.rooms} rooms • Up to {hostForm.maxGuests} guests</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Nightly Rate:</span>
+                            <span className="summary-val font-semibold text-primary">₹{hostForm.nightlyRateINR} / night</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Breakfast:</span>
+                            <span className="summary-val">{hostForm.breakfastIncluded ? 'Included in rate' : 'Not included'}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Cultural Walks:</span>
+                            <span className="summary-val">{hostForm.culturalActivities || 'None listed'}</span>
+                          </div>
+                          <div className="summary-item">
+                            <span className="summary-label">Photos Attached:</span>
+                            <span className="summary-val">{hostForm.photos?.length || 0} photo(s)</span>
+                          </div>
+                        </div>
+
+                        <div className="privacy-trust-disclaimer">
+                          <Shield size={16} color="#3478F6" className="flex-shrink-0" />
+                          <p>
+                            <strong>Data Privacy Commitment:</strong> By submitting, your application is placed in
+                            our private moderator queue. ROOTS will never sell your details or display unverified private
+                            addresses. Approval is strictly conducted through personal vetting.
+                          </p>
+                        </div>
+                      </div>
                     </div>
+                  )}
 
-                    <div className="form-group">
-                      <label>Cancellation Policy</label>
-                      <select
-                        value={hostForm.cancellationPolicy}
-                        onChange={(e) => setHostForm({ ...hostForm, cancellationPolicy: e.target.value })}
-                        className="form-control"
+                  {/* Navigation Actions */}
+                  <div className="wizard-nav-actions">
+                    {hostStep > 1 ? (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={handlePrevHostStep}
+                        disabled={hostSubmitting}
                       >
-                        <option value="Flexible: Free cancellation up to 48 hours before check-in.">Flexible (Up to 48h)</option>
-                        <option value="Moderate: Free cancellation up to 5 days before check-in.">Moderate (Up to 5 days)</option>
-                      </select>
-                    </div>
+                        <ChevronLeft size={16} /> Back
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        onClick={() => setActiveTab('discover')}
+                        disabled={hostSubmitting}
+                      >
+                        Cancel
+                      </button>
+                    )}
+
+                    {hostStep < 4 ? (
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        onClick={handleNextHostStep}
+                      >
+                        Continue to Step {hostStep + 1} <ArrowRight size={16} />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        className="btn-primary btn-large btn-submit-final"
+                        disabled={hostSubmitting}
+                      >
+                        {hostSubmitting ? (
+                          <>
+                            <RefreshCw size={16} className="spin-icon" /> Submitting Application...
+                          </>
+                        ) : (
+                          <>
+                            Submit Application for Review <ArrowRight size={16} />
+                          </>
+                        )}
+                      </button>
+                    )}
                   </div>
-
-                  <div className="form-group">
-                    <label>Guest House Rules (one per line)</label>
-                    <textarea
-                      rows="3"
-                      value={hostForm.houseRules}
-                      onChange={(e) => setHostForm({ ...hostForm, houseRules: e.target.value })}
-                      className="form-control"
-                    />
-                  </div>
-                </div>
-
-                {/* Section 5: Verification & Safety Compliance Declarations */}
-                <div className="form-section-block verification-sub-box">
-                  <h3 className="section-block-title">
-                    <span className="step-num">5</span> Verification & Safety Compliance Declarations
-                  </h3>
-                  <p className="sub-box-desc">
-                    To maintain traveller trust and community safety, please disclose your compliance statuses.
-                    Sensitive documentation numbers are stored confidentially and are never shared publicly.
-                  </p>
-
-                  <div className="form-row-2">
-                    <div className="form-group">
-                      <label>Government Identity Proof</label>
-                      <input
-                        type="text"
-                        value={hostForm.govIdType}
-                        onChange={(e) => setHostForm({ ...hostForm, govIdType: e.target.value })}
-                        className="form-control"
-                      />
-                      <small className="field-hint">Masked reference (e.g. Aadhaar / Voter ID / Passport)</small>
-                    </div>
-
-                    <div className="form-group">
-                      <label>Permission or Ownership Reference</label>
-                      <input
-                        type="text"
-                        value={hostForm.ownershipDocType}
-                        onChange={(e) => setHostForm({ ...hostForm, ownershipDocType: e.target.value })}
-                        className="form-control"
-                      />
-                      <small className="field-hint">Village Panchayat letter or property tax document</small>
-                    </div>
-                  </div>
-
-                  <div className="safety-declarations-list">
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={hostForm.hasFirstAidKit}
-                        onChange={(e) => setHostForm({ ...hostForm, hasFirstAidKit: e.target.checked })}
-                      />
-                      <span>Basic first aid kit is maintained on premises with clean bandages and antiseptic.</span>
-                    </label>
-
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={hostForm.hasFireExtinguisher}
-                        onChange={(e) => setHostForm({ ...hostForm, hasFireExtinguisher: e.target.checked })}
-                      />
-                      <span>Fire safety precaution (fire extinguisher or sand bucket) is accessible in cooking area.</span>
-                    </label>
-
-                    <label className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={hostForm.potableWaterCertified}
-                        onChange={(e) => setHostForm({ ...hostForm, potableWaterCertified: e.target.checked })}
-                      />
-                      <span>Purified, boiled, or tested drinking water is provided to guests in clean copper or glass jugs.</span>
-                    </label>
-                  </div>
-                </div>
-
-                {/* Submit Action */}
-                <div className="form-submit-row">
-                  <button type="submit" className="btn-primary btn-large">
-                    Submit Host Application for Review
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    onClick={() => setActiveTab('discover')}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </form>
+                </form>
+              </div>
             )}
           </div>
         </section>
@@ -1724,20 +2736,53 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
         </div>
       )}
 
-      {/* 7. MODAL: BOOKING REQUEST FORM */}
+      {/* 7. MODAL: PREMIUM STAY BOOKING REQUEST FORM */}
       {bookingStay && (
-        <div className="modal-overlay" onClick={() => setBookingStay(null)}>
+        <div className="modal-overlay" onClick={() => setBookingStay(null)} role="dialog" aria-modal="true" aria-labelledby="stay-booking-modal-title">
           <div className="modal-content stay-booking-modal card-white" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <div>
-                <span className="detail-modal-tag">Stay Request</span>
-                <h2>Request to Stay at {bookingStay.name}</h2>
+            
+            {/* Top Context Header: Homestay & Host Identification */}
+            <div className="booking-context-header">
+              <div className="booking-context-main">
+                <div className="booking-context-avatar-wrap">
+                  {bookingStay.host?.avatar ? (
+                    <img
+                      src={bookingStay.host.avatar}
+                      alt={bookingStay.host?.name || 'Host'}
+                      className="booking-host-avatar"
+                    />
+                  ) : (
+                    <div className="booking-host-avatar-fallback">
+                      <User size={22} />
+                    </div>
+                  )}
+                  <span className="booking-verified-badge" title="Verified Host on ROOTS">
+                    <Shield size={11} />
+                  </span>
+                </div>
+                <div className="booking-context-meta">
+                  <div className="booking-context-top-tags">
+                    <span className="booking-stay-type-badge">{bookingStay.propertyType}</span>
+                    <span className="booking-host-name">Hosted by {bookingStay.host?.name || 'Local Host'}</span>
+                    <span className="booking-rate-pill">₹{bookingStay.nightlyRateINR.toLocaleString('en-IN')}/night</span>
+                  </div>
+                  <h2 id="stay-booking-modal-title" className="booking-stay-title">{bookingStay.name}</h2>
+                  <div className="booking-stay-sub">
+                    <span className="booking-location">
+                      <MapPin size={13} /> {bookingStay.generalLocation || bookingStay.destinationId}
+                    </span>
+                    <span className="booking-divider-dot">•</span>
+                    <span className="booking-capacity-badge">
+                      <Users size={13} /> Max {bookingPricing.maxCapacity} Guests ({bookingStay.rooms || 1} Room{bookingStay.rooms > 1 ? 's' : ''})
+                    </span>
+                  </div>
+                </div>
               </div>
               <button
                 type="button"
                 className="modal-close-btn"
                 onClick={() => setBookingStay(null)}
-                aria-label="Close modal"
+                aria-label="Close booking modal"
               >
                 <X size={20} />
               </button>
@@ -1745,179 +2790,393 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
 
             {bookingSuccess ? (
               <div className="booking-success-box">
-                <CheckCircle2 size={50} color="#10B981" />
-                <h3>Stay Request Sent to {bookingStay.host?.name}!</h3>
-                <p>
-                  Request ID: <strong>{bookingSuccess.id}</strong>
+                <div className="booking-success-icon-wrap">
+                  <CheckCircle2 size={56} color="#10B981" />
+                </div>
+                <h3 className="booking-success-title">Stay Request Sent to {bookingStay.host?.name || 'your Host'}!</h3>
+                <p className="booking-success-subtitle">
+                  Your booking request is now submitted and awaiting host approval. No money has been charged.
                 </p>
+
+                <div className="booking-request-id-pill">
+                  <span>Reference ID:</span>
+                  <strong>{bookingSuccess.id}</strong>
+                </div>
+
                 <div className="booking-summary-recap">
-                  <div>Dates: {bookingSuccess.checkInDate} to {bookingSuccess.checkOutDate} ({bookingSuccess.nights} Nights)</div>
-                  <div>Guests: {bookingSuccess.guestsCount}</div>
-                  <div>Total Price: ₹{bookingSuccess.totalPriceINR.toLocaleString('en-IN')}</div>
-                </div>
-                <p className="no-charge-reminder">
-                  Notice: No payment was charged. The host will review your request and confirm availability.
-                </p>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => {
-                    setBookingSuccess(null);
-                    setBookingStay(null);
-                    setActiveTab('bookings');
-                  }}
-                >
-                  View My Stay Requests
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleBookingSubmit} className="booking-request-form">
-                {bookingError && (
-                  <div className="form-error-alert">
-                    <AlertCircle size={16} />
-                    <span>{bookingError}</span>
+                  <div className="recap-row">
+                    <span className="recap-label"><Calendar size={14} /> Dates</span>
+                    <span className="recap-value">{bookingSuccess.checkInDate} to {bookingSuccess.checkOutDate} ({bookingSuccess.nights} Night{bookingSuccess.nights > 1 ? 's' : ''})</span>
                   </div>
-                )}
-
-                <div className="form-row-2">
-                  <div className="form-group">
-                    <label>Check-in Date *</label>
-                    <input
-                      type="date"
-                      required
-                      value={bookingForm.checkInDate}
-                      onChange={(e) => setBookingForm({ ...bookingForm, checkInDate: e.target.value })}
-                      className="form-control"
-                    />
+                  <div className="recap-row">
+                    <span className="recap-label"><Users size={14} /> Guests</span>
+                    <span className="recap-value">{bookingSuccess.guestsCount} Guest{bookingSuccess.guestsCount > 1 ? 's' : ''}</span>
                   </div>
-
-                  <div className="form-group">
-                    <label>Check-out Date *</label>
-                    <input
-                      type="date"
-                      required
-                      value={bookingForm.checkOutDate}
-                      onChange={(e) => setBookingForm({ ...bookingForm, checkOutDate: e.target.value })}
-                      className="form-control"
-                    />
+                  <div className="recap-row">
+                    <span className="recap-label"><Utensils size={14} /> Traditional Dinner</span>
+                    <span className="recap-value">{bookingSuccess.includeDinner ? 'Included' : 'Not requested'}</span>
+                  </div>
+                  <div className="recap-row total">
+                    <span className="recap-label">Estimated Total</span>
+                    <span className="recap-value total-val">₹{bookingSuccess.totalPriceINR.toLocaleString('en-IN')}</span>
                   </div>
                 </div>
 
-                <div className="form-row-2">
-                  <div className="form-group">
-                    <label>Number of Guests *</label>
-                    <select
-                      value={bookingForm.guestsCount}
-                      onChange={(e) => setBookingForm({ ...bookingForm, guestsCount: Number(e.target.value) })}
-                      className="form-control"
-                    >
-                      {Array.from({ length: bookingStay.maxGuests || 4 }, (_, i) => i + 1).map((n) => (
-                        <option key={n} value={n}>{n} Guest{n > 1 ? 's' : ''}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {bookingStay.mealOptions?.dinnerAvailable && (
-                    <div className="form-group pt-4">
-                      <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={bookingForm.includeDinner}
-                          onChange={(e) => setBookingForm({ ...bookingForm, includeDinner: e.target.checked })}
-                        />
-                        <span>Include Traditional Family Dinner (+₹{bookingStay.mealOptions.dinnerCostPerPersonINR}/person/night)</span>
-                      </label>
-                    </div>
-                  )}
+                <div className="booking-success-notice">
+                  <Info size={16} color="#3478F6" />
+                  <p>
+                    <strong>Host Approval Required:</strong> {bookingStay.host?.name} will review your request and confirm availability within 24 hours. Once accepted, you can coordinate your arrival directly.
+                  </p>
                 </div>
 
-                <div className="form-row-2">
-                  <div className="form-group">
-                    <label>Your Full Name *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g., Ananya Verma"
-                      value={bookingForm.guestName}
-                      onChange={(e) => setBookingForm({ ...bookingForm, guestName: e.target.value })}
-                      className="form-control"
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Contact Email or Phone *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g., ananya@example.com"
-                      value={bookingForm.guestContact}
-                      onChange={(e) => setBookingForm({ ...bookingForm, guestContact: e.target.value })}
-                      className="form-control"
-                    />
-                  </div>
-                </div>
-
-                <div className="form-group">
-                  <label>Message to Host {bookingStay.host?.name}</label>
-                  <textarea
-                    rows="2"
-                    placeholder="Tell the host about your travel purpose, cultural interests, or any dietary requirements..."
-                    value={bookingForm.guestMessage}
-                    onChange={(e) => setBookingForm({ ...bookingForm, guestMessage: e.target.value })}
-                    className="form-control"
-                  />
-                </div>
-
-                {/* Price Breakdown Calculation */}
-                {(() => {
-                  const checkIn = new Date(bookingForm.checkInDate);
-                  const checkOut = new Date(bookingForm.checkOutDate);
-                  const nights = Math.max(1, Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24))) || 1;
-                  const base = bookingStay.nightlyRateINR * nights;
-                  const cleaning = bookingStay.cleaningOrCommunityFeeINR || 0;
-                  const dinner = bookingForm.includeDinner && bookingStay.mealOptions?.dinnerCostPerPersonINR
-                    ? bookingStay.mealOptions.dinnerCostPerPersonINR * bookingForm.guestsCount * nights
-                    : 0;
-                  const total = base + cleaning + dinner;
-
-                  return (
-                    <div className="price-calculation-card">
-                      <h4 className="price-calc-title">Estimated Stay Total</h4>
-                      <div className="calc-line">
-                        <span>₹{bookingStay.nightlyRateINR} × {nights} Nights</span>
-                        <span>₹{base.toLocaleString('en-IN')}</span>
-                      </div>
-                      {cleaning > 0 && (
-                        <div className="calc-line">
-                          <span>Village Community & Cleaning Fund</span>
-                          <span>₹{cleaning.toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      {dinner > 0 && (
-                        <div className="calc-line">
-                          <span>Traditional Dinner ({bookingForm.guestsCount} guests × {nights} nights)</span>
-                          <span>₹{dinner.toLocaleString('en-IN')}</span>
-                        </div>
-                      )}
-                      <div className="calc-total-line">
-                        <strong>Total Estimated (Pay upon host acceptance)</strong>
-                        <strong>₹{total.toLocaleString('en-IN')}</strong>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                <div className="modal-actions-row">
-                  <button type="submit" className="btn-primary flex-1">
-                    Send Stay Request
+                <div className="booking-success-actions">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => {
+                      setBookingSuccess(null);
+                      setBookingStay(null);
+                      setActiveTab('bookings');
+                    }}
+                  >
+                    View My Stay Requests
                   </button>
                   <button
                     type="button"
                     className="btn-secondary"
-                    onClick={() => setBookingStay(null)}
+                    onClick={() => {
+                      setBookingSuccess(null);
+                      setBookingStay(null);
+                    }}
                   >
-                    Cancel
+                    Close
                   </button>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={handleBookingSubmit} className="booking-request-form-v2" noValidate>
+                {bookingError && (
+                  <div className="booking-error-banner" role="alert">
+                    <AlertCircle size={18} />
+                    <span>{bookingError}</span>
+                  </div>
+                )}
+
+                <div className="booking-form-grid-layout">
+                  {/* LEFT COLUMN: Input Sections */}
+                  <div className="booking-form-left-col">
+                    
+                    {/* SECTION 1: Dates & Guests */}
+                    <div className="booking-section-card">
+                      <div className="booking-section-header">
+                        <div className="section-title-wrap">
+                          <span className="section-step-num">1</span>
+                          <Calendar size={18} className="section-icon" />
+                          <h3 className="section-title">Dates & Guests</h3>
+                        </div>
+                        {bookingPricing.isValidDates ? (
+                          <span className="nights-pill-badge">
+                            <Clock size={12} /> {bookingPricing.nights} Night{bookingPricing.nights > 1 ? 's' : ''}
+                          </span>
+                        ) : (
+                          <span className="dates-pending-badge">Select range</span>
+                        )}
+                      </div>
+
+                      <div className="booking-inputs-row-2">
+                        <div className="booking-input-group">
+                          <label htmlFor="booking-checkin-date" className="booking-label">
+                            Check-in Date <span className="req-star">*</span>
+                          </label>
+                          <div className="booking-input-wrapper">
+                            <input
+                              id="booking-checkin-date"
+                              type="date"
+                              required
+                              value={bookingForm.checkInDate}
+                              onChange={(e) => setBookingForm(prev => ({ ...prev, checkInDate: e.target.value }))}
+                              className={`booking-input-field ${bookingPricing.dateError ? 'input-warn' : ''}`}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="booking-input-group">
+                          <label htmlFor="booking-checkout-date" className="booking-label">
+                            Check-out Date <span className="req-star">*</span>
+                          </label>
+                          <div className="booking-input-wrapper">
+                            <input
+                              id="booking-checkout-date"
+                              type="date"
+                              required
+                              min={bookingForm.checkInDate || undefined}
+                              value={bookingForm.checkOutDate}
+                              onChange={(e) => setBookingForm(prev => ({ ...prev, checkOutDate: e.target.value }))}
+                              className={`booking-input-field ${bookingPricing.dateError ? 'input-warn' : ''}`}
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {bookingPricing.dateError && (
+                        <div className="date-inline-feedback error">
+                          <AlertCircle size={13} />
+                          <span>{bookingPricing.dateError}</span>
+                        </div>
+                      )}
+
+                      <div className="booking-input-group mt-3">
+                        <label htmlFor="booking-guests-count" className="booking-label">
+                          Number of Guests <span className="req-star">*</span>
+                        </label>
+                        <div className="booking-input-wrapper">
+                          <select
+                            id="booking-guests-count"
+                            value={bookingForm.guestsCount}
+                            onChange={(e) => setBookingForm(prev => ({ ...prev, guestsCount: Number(e.target.value) }))}
+                            className="booking-input-field select-field"
+                          >
+                            {Array.from({ length: bookingPricing.maxCapacity }, (_, i) => i + 1).map((n) => (
+                              <option key={n} value={n}>
+                                {n} Guest{n > 1 ? 's' : ''} {n === bookingPricing.maxCapacity ? '(Max Capacity)' : ''}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <span className="booking-field-caption">
+                          Property capacity: Accommodates up to {bookingPricing.maxCapacity} guests ({bookingStay.rooms || 1} room{bookingStay.rooms > 1 ? 's' : ''}, {bookingStay.beds || 2} bed{bookingStay.beds > 1 ? 's' : ''})
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* SECTION 2: Your Details */}
+                    <div className="booking-section-card">
+                      <div className="booking-section-header">
+                        <div className="section-title-wrap">
+                          <span className="section-step-num">2</span>
+                          <User size={18} className="section-icon" />
+                          <h3 className="section-title">Your Details</h3>
+                        </div>
+                        <span className="privacy-pill-badge">
+                          <Shield size={11} /> Host Contact
+                        </span>
+                      </div>
+
+                      <div className="booking-inputs-row-2">
+                        <div className="booking-input-group">
+                          <label htmlFor="booking-guest-name" className="booking-label">
+                            Full Name <span className="req-star">*</span>
+                          </label>
+                          <div className="booking-input-wrapper">
+                            <input
+                              id="booking-guest-name"
+                              type="text"
+                              required
+                              placeholder="e.g. Maya Iyer"
+                              value={bookingForm.guestName}
+                              onChange={(e) => setBookingForm(prev => ({ ...prev, guestName: e.target.value }))}
+                              className="booking-input-field"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="booking-input-group">
+                          <label htmlFor="booking-guest-contact" className="booking-label">
+                            Contact Email or Phone <span className="req-star">*</span>
+                          </label>
+                          <div className="booking-input-wrapper">
+                            <input
+                              id="booking-guest-contact"
+                              type="text"
+                              required
+                              placeholder="e.g. maya@example.com / +91..."
+                              value={bookingForm.guestContact}
+                              onChange={(e) => setBookingForm(prev => ({ ...prev, guestContact: e.target.value }))}
+                              className="booking-input-field"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="booking-input-group mt-3">
+                        <label htmlFor="booking-guest-message" className="booking-label">
+                          Message to Host {bookingStay.host?.name || 'Local Host'} <span className="optional-tag">(Optional)</span>
+                        </label>
+                        <div className="booking-input-wrapper">
+                          <textarea
+                            id="booking-guest-message"
+                            rows="2"
+                            placeholder="Share your travel plans, estimated arrival time, dietary preferences, or interest in local village culture..."
+                            value={bookingForm.guestMessage}
+                            onChange={(e) => setBookingForm(prev => ({ ...prev, guestMessage: e.target.value }))}
+                            className="booking-input-field textarea-field"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* SECTION 3: Optional Experiences */}
+                    <div className="booking-section-card">
+                      <div className="booking-section-header">
+                        <div className="section-title-wrap">
+                          <span className="section-step-num">3</span>
+                          <Utensils size={18} className="section-icon" />
+                          <h3 className="section-title">Optional Experiences</h3>
+                        </div>
+                        {bookingStay.mealOptions?.breakfastIncluded && (
+                          <span className="breakfast-pill-badge">
+                            <Coffee size={12} /> Breakfast Included
+                          </span>
+                        )}
+                      </div>
+
+                      {bookingStay.mealOptions?.dinnerAvailable ? (
+                        <div
+                          className={`dinner-selectable-card ${bookingForm.includeDinner ? 'active' : ''}`}
+                          onClick={() => setBookingForm(prev => ({ ...prev, includeDinner: !prev.includeDinner }))}
+                          role="checkbox"
+                          aria-checked={bookingForm.includeDinner}
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === ' ' || e.key === 'Enter') {
+                              e.preventDefault();
+                              setBookingForm(prev => ({ ...prev, includeDinner: !prev.includeDinner }));
+                            }
+                          }}
+                        >
+                          <div className="dinner-card-toggle">
+                            <div className={`dinner-checkbox-indicator ${bookingForm.includeDinner ? 'checked' : ''}`}>
+                              {bookingForm.includeDinner && <Check size={14} strokeWidth={3} />}
+                            </div>
+                          </div>
+                          <div className="dinner-card-body">
+                            <div className="dinner-card-top">
+                              <span className="dinner-card-title">Traditional Homestay Family Dinner</span>
+                              <span className="dinner-rate-pill">
+                                +₹{bookingStay.mealOptions.dinnerCostPerPersonINR}/person/night
+                              </span>
+                            </div>
+                            <p className="dinner-card-desc">
+                              {bookingStay.mealOptions.description || "Authentic family-style dinner prepared fresh by your hosts with local regional ingredients."}
+                            </p>
+                            {bookingPricing.isValidDates && (
+                              <div className="dinner-live-calc">
+                                {bookingForm.includeDinner ? (
+                                  <span className="dinner-calc-added">
+                                    <Sparkles size={12} /> Added: +₹{bookingPricing.dinnerTotal.toLocaleString('en-IN')} total ({bookingPricing.guests} guest{bookingPricing.guests > 1 ? 's' : ''} × {bookingPricing.nights} night{bookingPricing.nights > 1 ? 's' : ''})
+                                  </span>
+                                ) : (
+                                  <span className="dinner-calc-not-added">Click to add to your stay request</span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="dinner-not-available-box">
+                          <Info size={16} color="#3478F6" />
+                          <span>
+                            Daily authentic village breakfast is complimentary with this stay. Host {bookingStay.host?.name} can recommend local traditional eateries nearby.
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* RIGHT COLUMN: Sticky Prominent Price Summary */}
+                  <div className="booking-form-right-col">
+                    <div className="price-summary-card">
+                      <div className="price-summary-header">
+                        <div className="section-title-wrap">
+                          <span className="section-step-num">4</span>
+                          <h3 className="price-summary-title">Price Summary</h3>
+                        </div>
+                        <span className="currency-note">INR (₹)</span>
+                      </div>
+
+                      <div className="price-breakdown-list">
+                        <div className="price-line-item">
+                          <span className="item-label">
+                            ₹{bookingStay.nightlyRateINR.toLocaleString('en-IN')} × {bookingPricing.nights} Night{bookingPricing.nights > 1 ? 's' : ''}
+                          </span>
+                          <span className="item-amount">
+                            ₹{bookingPricing.baseTotal.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+
+                        {bookingPricing.cleaningFee > 0 && (
+                          <div className="price-line-item">
+                            <span className="item-label">Village Community & Cleaning Fund</span>
+                            <span className="item-amount">
+                              ₹{bookingPricing.cleaningFee.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        )}
+
+                        {bookingStay.mealOptions?.dinnerAvailable && (
+                          <div className={`price-line-item ${!bookingForm.includeDinner ? 'dimmed' : ''}`}>
+                            <span className="item-label">
+                              Traditional Dinner ({bookingPricing.guests} guest{bookingPricing.guests > 1 ? 's' : ''} × {bookingPricing.nights}N)
+                            </span>
+                            <span className="item-amount">
+                              {bookingForm.includeDinner
+                                ? `₹${bookingPricing.dinnerTotal.toLocaleString('en-IN')}`
+                                : 'Not selected'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Prominent Estimated Total Box */}
+                      <div className="price-prominent-total-box">
+                        <div className="total-top-row">
+                          <span className="total-main-label">Estimated Stay Total</span>
+                          <span className="total-estimate-pill">Approval Required</span>
+                        </div>
+                        <div className="total-main-amount">
+                          ₹{bookingPricing.estimatedTotal.toLocaleString('en-IN')}
+                        </div>
+                        <p className="total-guarantee-note">
+                          * Total is an estimate until confirmed by your host. No payment is charged today.
+                        </p>
+                      </div>
+
+                      {/* Action CTA Buttons */}
+                      <div className="booking-actions-block">
+                        <button
+                          type="submit"
+                          className="btn-send-stay-request"
+                          disabled={!bookingPricing.isValidDates}
+                        >
+                          Send Stay Request
+                          <ArrowRight size={18} />
+                        </button>
+                        <button
+                          type="button"
+                          className="btn-cancel-stay-request"
+                          onClick={() => setBookingStay(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+
+                      {/* Trust & Guarantee points */}
+                      <div className="booking-trust-points">
+                        <div className="trust-point-item">
+                          <Shield size={14} className="trust-icon" />
+                          <span>Direct homestay booking with verified hosts</span>
+                        </div>
+                        <div className="trust-point-item">
+                          <Clock size={14} className="trust-icon" />
+                          <span>Host responds within 24 hours</span>
+                        </div>
+                        <div className="trust-point-item">
+                          <Heart size={14} className="trust-icon" />
+                          <span>100% of community fund directly supports local village</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </form>
             )}
