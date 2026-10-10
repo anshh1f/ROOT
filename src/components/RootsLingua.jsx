@@ -28,6 +28,7 @@ import {
 import {
   SUPPORTED_LANGUAGES,
   getTranslationProviderStatus,
+  fetchTranslationProviderStatus,
   translateText
 } from '../services/translationService';
 import {
@@ -52,6 +53,12 @@ export function RootsLingua({ onBackToHome }) {
 
   // Provider configuration status
   const [providerStatus, setProviderStatus] = useState(getTranslationProviderStatus());
+
+  useEffect(() => {
+    fetchTranslationProviderStatus().then((status) => {
+      if (status) setProviderStatus(status);
+    });
+  }, []);
 
   // =========================================================================
   // TRANSLATOR STATE
