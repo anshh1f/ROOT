@@ -1,20 +1,44 @@
-import React, { useState, useEffect } from 'react';
-import { BookOpen, Heart, Clock, MapPin, Plus, X, User, Check, Send } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BookOpen, Heart, Clock, MapPin, Plus, X, User, Check, Send, AlertCircle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { getApprovedDiaries, submitDiary } from '../services/dbService';
 import { SAMPLE_TRAVEL_DIARIES } from '../data/sampleData';
 
 export function TravelDiaries({ onOpenCommunity }) {
-  const [diaries, setDiaries] = useState(() => {
-    const saved = localStorage.getItem('roots_community_diaries');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        return [...SAMPLE_TRAVEL_DIARIES, ...parsed];
-      } catch (e) {
-        return SAMPLE_TRAVEL_DIARIES;
-      }
+  const { user, requireAuth } = useAuth();
+  const [diaries, setDiaries] = useState(SAMPLE_TRAVEL_DIARIES);
+  const [loading, setLoading] = useState(true);
+
+  const loadDiaries = useCallback(async () => {
+    try {
+      const approved = await getApprovedDiaries();
+      // Map schema to display schema if needed
+      const mapped = approved.map(d => ({
+        id: d.id,
+        title: d.title,
+        author: d.author_name || d.contributor?.name || d.author || 'Community Traveler',
+        location: d.destination || d.location || 'Local Region',
+        date: d.trip_dates || d.tripDates || 'Recent Journey',
+        avatar: d.author_avatar || d.contributor?.avatar || d.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
+        cover: d.cover_photo || d.cover || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+        snippet: (d.story ? d.story.slice(0, 140) + '...' : d.snippet) || '',
+        fullText: d.story || d.fullText || '',
+        tags: d.tags || ['Community Story'],
+        likes: d.likes_count || d.likes || 1,
+        readTime: '3 min read',
+        status: d.status
+      }));
+      setDiaries(mapped.length > 0 ? mapped : SAMPLE_TRAVEL_DIARIES);
+    } catch (e) {
+      console.warn('Error loading approved diaries:', e);
+    } finally {
+      setLoading(false);
     }
-    return SAMPLE_TRAVEL_DIARIES;
-  });
+  }, []);
+
+  useEffect(() => {
+    loadDiaries();
+  }, [loadDiaries]);
 
   const [activeDiary, setActiveDiary] = useState(null);
   const [showWriteModal, setShowWriteModal] = useState(false);
@@ -30,6 +54,7 @@ export function TravelDiaries({ onOpenCommunity }) {
   const [newContent, setNewContent] = useState('');
   const [newTag, setNewTag] = useState('Meeting Locals');
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const toggleLike = (diaryId) => {
     const next = { ...likedMap, [diaryId]: !likedMap[diaryId] };
@@ -37,41 +62,42 @@ export function TravelDiaries({ onOpenCommunity }) {
     localStorage.setItem('roots_diary_likes', JSON.stringify(next));
   };
 
-  const handleCreateDiary = (e) => {
+  const handleCreateDiary = async (e) => {
     e.preventDefault();
     if (!newTitle.trim() || !newContent.trim()) return;
 
-    const newEntry = {
-      id: `user-diary-${Date.now()}`,
-      title: newTitle,
-      author: newAuthor.trim() || 'Fellow Explorer',
-      location: newLocation.trim() || 'Local Foothills',
-      date: 'Just now (Prototype entry)',
-      avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
-      cover: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
-      snippet: newContent.slice(0, 140) + '...',
-      fullText: newContent,
-      tags: [newTag, 'Community Story'],
-      likes: 1,
-      readTime: '3 min read',
-      isUserCreated: true
+    const executeSubmit = async () => {
+      setIsSubmitting(true);
+      try {
+        await submitDiary({
+          title: newTitle.trim(),
+          authorName: newAuthor.trim() || user?.user_metadata?.full_name || 'Fellow Explorer',
+          destination: newLocation.trim() || 'Local Region',
+          story: newContent.trim(),
+          tags: [newTag, 'Community Story']
+        }, user);
+
+        setSubmitSuccess(true);
+        setTimeout(() => {
+          setSubmitSuccess(false);
+          setShowWriteModal(false);
+          setNewTitle('');
+          setNewAuthor('');
+          setNewLocation('');
+          setNewContent('');
+          setIsSubmitting(false);
+        }, 2500);
+      } catch (err) {
+        setIsSubmitting(false);
+        alert(`Error saving diary: ${err.message}`);
+      }
     };
 
-    const userDiaries = JSON.parse(localStorage.getItem('roots_community_diaries') || '[]');
-    const updatedUserDiaries = [newEntry, ...userDiaries];
-    localStorage.setItem('roots_community_diaries', JSON.stringify(updatedUserDiaries));
-
-    setDiaries([newEntry, ...diaries]);
-    setSubmitSuccess(true);
-
-    setTimeout(() => {
-      setSubmitSuccess(false);
-      setShowWriteModal(false);
-      setNewTitle('');
-      setNewAuthor('');
-      setNewLocation('');
-      setNewContent('');
-    }, 1800);
+    requireAuth({
+      actionName: 'Publish a community travel diary',
+      message: 'Sign in or create an account to submit your travel diary to the ROOTS community.',
+      onAuthenticated: () => executeSubmit()
+    });
   };
 
   return (
@@ -274,9 +300,9 @@ export function TravelDiaries({ onOpenCommunity }) {
                 </p>
 
                 {submitSuccess ? (
-                  <div className="success-banner">
+                  <div className="success-banner" style={{ background: '#DCFCE7', color: '#166534', padding: 16, borderRadius: 12 }}>
                     <Check size={20} />
-                    <span>Your travel diary has been saved and published to the local showcase!</span>
+                    <span>Your travel diary has been submitted to the moderation queue! It will appear in the public feed once approved by community coordinators.</span>
                   </div>
                 ) : (
                   <form onSubmit={handleCreateDiary} className="write-form">

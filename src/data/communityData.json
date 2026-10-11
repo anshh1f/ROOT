@@ -28,7 +28,7 @@
       "state": "Meghalaya",
       "region": "Northeast India",
       "keywords": ["meghalaya", "cherrapunji", "nongriat", "shillong", "sohra", "root bridges", "mawlynnong"],
-      "image": "https://images.unsplash.com/photo-1626014303757-6466337a3465?auto=format&fit=crop&w=1000&q=80",
+      "image": "https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=1000&q=80",
       "tagline": "Bio-engineered Ficus living root bridges, sacred forest groves, and cloud plateaus.",
       "bestMonths": "September to April",
       "defaultDailyTransportINR": 1100
@@ -72,7 +72,7 @@
       "state": "Karnataka",
       "region": "South India",
       "keywords": ["hampi", "anegundi", "tungabhadra", "sanapur", "karnataka", "boulders", "heritage"],
-      "image": "https://images.unsplash.com/photo-1600100397608-f010f4438317?auto=format&fit=crop&w=1000&q=80",
+      "image": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=1000&q=80",
       "tagline": "Ancient granite stone landscapes, hand-woven banana fiber crafts, and river coracle journeys.",
       "bestMonths": "October to March",
       "defaultDailyTransportINR": 700
@@ -799,7 +799,7 @@
       "sourceContributor": "Anegundi Community Council",
       "reviewStatus": "Community Recommended (Sample)",
       "amenities": ["Courtyard dining", "Bicycle rental nearby", "Pottery intro"],
-      "image": "https://images.unsplash.com/photo-1600100397608-f010f4438317?auto=format&fit=crop&w=800&q=80"
+      "image": "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80"
     },
     {
       "id": "acc-gokarna-cottage",

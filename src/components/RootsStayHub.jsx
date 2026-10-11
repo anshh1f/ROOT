@@ -1,15 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Home, MapPin, Shield, Check, Calendar, ArrowRight, X, Bookmark, Sparkles,
-  Send, Users, AlertCircle, Eye, CheckCircle2, XCircle, Clock, Info, Search,
-  Filter, Coffee, Wifi, Mountain, Utensils, Activity, Flag, ChevronRight,
-  Lock, Bed, Bath, Plus, RefreshCw, FileText, CheckSquare, Phone, Mail, Award,
-  Image, Camera, ChevronLeft, Trash2, Heart, Upload, User
+  Home, MapPin, Shield, Check, Calendar, ArrowRight, X, Sparkles,
+  Users, AlertCircle, Eye, CheckCircle2, XCircle, Info, Search,
+  Coffee, Wifi, Mountain, Utensils, Award,
+  Bed, Bath, Plus, RefreshCw, FileText,
+  ChevronLeft, Trash2, Heart, Upload, User,
+  Trees, Waves, Building2, Compass, ChevronDown, SlidersHorizontal,
+  Camera, Lock, Image, CheckSquare, Clock, Flag
 } from 'lucide-react';
 import {
   getAllStays,
-  getApprovedStays,
-  getStayById,
   submitHostRegistration,
   getHostApplications,
   moderateHostApplication,
@@ -20,10 +20,93 @@ import {
   reportStayListing,
   moderateStayReport
 } from '../data/stayHubData';
+import {
+  submitHostApplication as submitHostAppDb,
+  getAllHomestays as getAllHomestaysDb,
+  createStayBookingRequest as createStayBookingDb,
+  updateStayBookingStatus as updateStayBookingDb,
+  moderateHostApplication as moderateHostAppDb,
+  getBookingsForGuest,
+  getBookingsForHost
+} from '../services/dbService';
 import { useAuth } from '../context/AuthContext';
 
+// Compact filter chips for authentic homestay discovery
+const STAY_CATEGORIES = [
+  { id: 'all', label: 'All Stays', icon: Home },
+  { id: 'riverside', label: 'Riverside', icon: Waves },
+  { id: 'mountain', label: 'Mountain Retreats', icon: Mountain },
+  { id: 'village', label: 'Village Homes', icon: Building2 },
+  { id: 'family', label: 'Family Hosted', icon: Users },
+  { id: 'nature', label: 'Nature Escapes', icon: Trees },
+];
+
+// Curated scenic escape destinations
+const ESCAPE_DESTINATIONS = [
+  {
+    id: 'alleppey',
+    filterValue: 'Periyar',
+    name: 'Alleppey & Periyar Backwaters',
+    location: 'Kerala',
+    tagline: 'Houseboats, village life & slow-cooked clay pot sadya',
+    tags: ['Riverside canals', 'Local farm meals', 'Dawn canoe rows'],
+    image: 'https://images.unsplash.com/photo-1593693397690-362cb9666fc2?auto=format&fit=crop&w=800&q=80',
+    homestayName: "Eldho & Mary's Riverside Teakwood Homestay"
+  },
+  {
+    id: 'meghalaya',
+    filterValue: 'meghalaya',
+    name: 'Meghalaya Living Root Bridges',
+    location: 'Nongriat, East Khasi Hills',
+    tagline: 'Bio-architecture trails, roaring falls & Khasi folklore',
+    tags: ['Living root bridges', 'Waterfall treks', 'Bamboo stilt homes'],
+    image: 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80',
+    homestayName: "Byron's Ficus Canopy Bamboo Homestay"
+  },
+  {
+    id: 'varkala',
+    filterValue: 'varkala',
+    name: 'Varkala Beach & Cliff Hamlets',
+    location: 'Arabian Sea Coast, Kerala',
+    tagline: 'Red laterite cliffs, shoreline fishermen & coconut courtyards',
+    tags: ['Quiet beach trails', 'Ancestral courtyards', 'Seaside appams'],
+    image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80',
+    homestayName: "Subhadra Amma's Ancestral Seaside Nallukettu"
+  },
+  {
+    id: 'spiti',
+    filterValue: 'spiti',
+    name: 'Spiti Valley High Deserts',
+    location: 'Trans-Himalaya, Himachal Pradesh',
+    tagline: '14,400 ft mudbrick homes, ancient gompas & star fields',
+    tags: ['Mudbrick retreats', 'Monastery chants', 'Dark-sky stargazing'],
+    image: 'https://images.unsplash.com/photo-1548013146-72479768bada?auto=format&fit=crop&w=800&q=80',
+    homestayName: "Tenzin's Mudbrick Homestay Under Chau Chau Peak"
+  },
+  {
+    id: 'coorg',
+    filterValue: 'coorg',
+    name: 'Coorg Highland Plantations',
+    location: 'Kodagu, Karnataka',
+    tagline: 'Canopy coffee estates, pepper vines & Kodava hospitality',
+    tags: ['Organic coffee estates', 'Misty stream walks', 'Akki roti feasts'],
+    image: 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?auto=format&fit=crop&w=800&q=80',
+    homestayName: "Biddappa Family Coffee & Pepper Estate Homestay"
+  },
+  {
+    id: 'hampi',
+    filterValue: 'hampi',
+    name: 'Hampi & Anegundi Stone Verandas',
+    location: 'Tungabhadra Basin, Karnataka',
+    tagline: 'Ancient banana groves, granite boulders & coracle rides',
+    tags: ['Rural artisan guild', 'Coracle river rides', 'Folklore twilight walks'],
+    image: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=800&q=80',
+    homestayName: "Shashi's Banana Grove Stone Veranda"
+  }
+];
+
 export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
-  const { requireAuth } = useAuth();
+  const { user, requireAuth } = useAuth();
   // Navigation tabs: 'discover' | 'host' | 'bookings' | 'admin'
   const [activeTab, setActiveTab] = useState('discover');
 
@@ -32,18 +115,34 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
   const [bookings, setBookings] = useState(() => getStayBookings());
   const [applications, setApplications] = useState(() => getHostApplications());
   const [reports, setReports] = useState(() => getStayReports());
+  const [bookingViewMode, setBookingViewMode] = useState('guest'); // 'guest' | 'host'
+
+  // Load live database homestays
+  useEffect(() => {
+    let isMounted = true;
+    getAllHomestaysDb().then(data => {
+      if (isMounted && data && data.length > 0) {
+        setStays(data);
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, []);
 
   // Discovery Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [destinationFilter, setDestinationFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [checkInDate, setCheckInDate] = useState('');
   const [checkOutDate, setCheckOutDate] = useState('');
-  const [guestsFilter, setGuestsFilter] = useState(1);
+  const [guestsFilter, setGuestsFilter] = useState(2);
   const [maxPriceFilter, setMaxPriceFilter] = useState(4000);
   const [filterWifiOnly, setFilterWifiOnly] = useState(false);
   const [filterBreakfastOnly, setFilterBreakfastOnly] = useState(false);
   const [filterCulturalActivities, setFilterCulturalActivities] = useState(false);
   const [propertyTypeFilter, setPropertyTypeFilter] = useState('all');
+
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
 
   // Bookmarks
   const [bookmarkedIds, setBookmarkedIds] = useState(() => {
@@ -149,14 +248,12 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate type: image/jpeg, image/png, image/webp
     const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
     if (!validTypes.includes(file.type)) {
       setAvatarError('Please upload a valid image file (JPEG, PNG, or WebP).');
       return;
     }
 
-    // Validate size: max 5MB
     const maxSize = 5 * 1024 * 1024;
     if (file.size > maxSize) {
       setAvatarError('Image size exceeds 5MB limit. Please upload a smaller photo.');
@@ -224,9 +321,25 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
   };
 
   // Synchronize storage
-  const refreshAllData = () => {
-    setStays(getAllStays());
-    setBookings(getStayBookings());
+  const refreshAllData = async (mode = bookingViewMode) => {
+    try {
+      const live = await getAllHomestaysDb();
+      if (live && live.length > 0) setStays(live);
+      else setStays(getAllStays());
+    } catch {
+      setStays(getAllStays());
+    }
+    try {
+      if (mode === 'host') {
+        const hostReqs = await getBookingsForHost(user?.id);
+        setBookings(hostReqs || []);
+      } else {
+        const guestReqs = await getBookingsForGuest(user?.id);
+        setBookings(guestReqs || getStayBookings());
+      }
+    } catch {
+      setBookings(getStayBookings());
+    }
     setApplications(getHostApplications());
     setReports(getStayReports());
   };
@@ -248,7 +361,28 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
     const approved = stays.filter(s => s.status === 'approved');
 
     return approved.filter(stay => {
-      // Search Query
+      // 1. Category Filter Chip
+      if (categoryFilter !== 'all') {
+        const textToSearch = `${stay.name} ${stay.generalLocation} ${stay.propertyType} ${stay.amenities?.join(' ')} ${stay.culturalActivities?.join(' ')} ${stay.host?.intro || ''} ${stay.tagline || ''}`.toLowerCase();
+        if (categoryFilter === 'riverside') {
+          const isRiverside = textToSearch.includes('river') || textToSearch.includes('canal') || textToSearch.includes('backwater') || textToSearch.includes('periyar') || textToSearch.includes('tungabhadra');
+          if (!isRiverside) return false;
+        } else if (categoryFilter === 'mountain') {
+          const isMountain = textToSearch.includes('mountain') || textToSearch.includes('peak') || textToSearch.includes('hill') || textToSearch.includes('ridge') || stay.destinationId === 'spiti' || stay.destinationId === 'meghalaya' || stay.destinationId === 'coorg';
+          if (!isMountain) return false;
+        } else if (categoryFilter === 'village') {
+          const isVillage = textToSearch.includes('village') || textToSearch.includes('hamlet') || textToSearch.includes('courtyard') || textToSearch.includes('stilt') || stay.propertyType.includes('Village') || stay.propertyType.includes('Courtyard');
+          if (!isVillage) return false;
+        } else if (categoryFilter === 'family') {
+          const isFamily = stay.hostLivesOnProperty || textToSearch.includes('family') || textToSearch.includes('ancestral') || textToSearch.includes('amma');
+          if (!isFamily) return false;
+        } else if (categoryFilter === 'nature') {
+          const isNature = textToSearch.includes('nature') || textToSearch.includes('canopy') || textToSearch.includes('plantation') || textToSearch.includes('stream') || textToSearch.includes('orchard') || textToSearch.includes('forest') || textToSearch.includes('farm');
+          if (!isNature) return false;
+        }
+      }
+
+      // 2. Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
         const matchesText =
@@ -256,31 +390,36 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
           stay.generalLocation.toLowerCase().includes(q) ||
           (stay.host?.name && stay.host.name.toLowerCase().includes(q)) ||
           stay.propertyType.toLowerCase().includes(q) ||
+          (stay.tagline && stay.tagline.toLowerCase().includes(q)) ||
           (stay.culturalActivities && stay.culturalActivities.some(a => a.toLowerCase().includes(q)));
         if (!matchesText) return false;
       }
 
-      // Destination
-      if (destinationFilter !== 'all' && stay.destinationId !== destinationFilter) {
-        return false;
+      // 3. Destination Filter
+      if (destinationFilter !== 'all') {
+        const matchesDest =
+          stay.destinationId === destinationFilter ||
+          stay.generalLocation.toLowerCase().includes(destinationFilter.toLowerCase()) ||
+          stay.name.toLowerCase().includes(destinationFilter.toLowerCase());
+        if (!matchesDest) return false;
       }
 
-      // Property Type
+      // 4. Property Type
       if (propertyTypeFilter !== 'all' && stay.propertyType !== propertyTypeFilter) {
         return false;
       }
 
-      // Max Price
+      // 5. Max Price
       if (stay.nightlyRateINR > maxPriceFilter) {
         return false;
       }
 
-      // Capacity
+      // 6. Capacity
       if (stay.maxGuests < guestsFilter) {
         return false;
       }
 
-      // Amenities Filters
+      // 7. Amenities Filters
       if (filterWifiOnly && !stay.amenities?.includes('Wi-Fi')) {
         return false;
       }
@@ -297,6 +436,7 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
     });
   }, [
     stays,
+    categoryFilter,
     searchQuery,
     destinationFilter,
     propertyTypeFilter,
@@ -322,6 +462,17 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
     }));
     setBookingError('');
     setBookingSuccess(null);
+  };
+
+  // Click on a scenic destination card in "Find Your Kind of Escape"
+  const handleSelectEscapeDestination = (dest) => {
+    setDestinationFilter(dest.filterValue);
+    setCategoryFilter('all');
+    setSearchQuery('');
+    const staysSection = document.getElementById('homes-with-a-story');
+    if (staysSection) {
+      staysSection.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   // Dynamic Pricing & Date Calculation for Booking Request Form
@@ -414,7 +565,7 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
       guests,
       maxCapacity
     };
-  }, [bookingStay, bookingForm.checkInDate, bookingForm.checkOutDate, bookingForm.guestsCount, bookingForm.includeDinner]);
+  }, [bookingStay, bookingForm]);
 
   // Submit Booking Request
   const handleBookingSubmit = (e) => {
@@ -464,9 +615,30 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
       return;
     }
 
-    const executeBooking = () => {
+    const executeBooking = async () => {
       try {
-        const newBooking = createStayBookingRequest({
+        const newBooking = await createStayBookingDb({
+          stayId: bookingStay.id,
+          stayTitle: bookingStay.name,
+          destinationId: bookingStay.destinationId,
+          hostUserId: bookingStay.host_user_id || bookingStay.hostUserId || null,
+          hostName: bookingStay.host?.name || 'Local Host',
+          guestName: bookingForm.guestName.trim(),
+          guestContact: bookingForm.guestContact.trim(),
+          checkInDate: bookingForm.checkInDate,
+          checkOutDate: bookingForm.checkOutDate,
+          nights: bookingPricing.nights,
+          guestsCount: numGuests,
+          includeDinner: Boolean(bookingForm.includeDinner),
+          nightlyRateINR: bookingStay.nightlyRateINR,
+          cleaningFeeINR: bookingPricing.cleaningFee,
+          dinnerTotalINR: bookingPricing.dinnerTotal,
+          totalPriceINR: bookingPricing.estimatedTotal,
+          guestMessage: bookingForm.guestMessage.trim()
+        }, user);
+
+        // Also update local view
+        createStayBookingRequest({
           stayId: bookingStay.id,
           guestName: bookingForm.guestName.trim(),
           guestContact: bookingForm.guestContact.trim(),
@@ -478,7 +650,7 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
         });
 
         setBookingSuccess(newBooking);
-        refreshAllData();
+        await refreshAllData();
       } catch (err) {
         // Form fields are preserved in bookingForm state
         setBookingError(err.message || 'Error creating booking request.');
@@ -573,14 +745,51 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
       return;
     }
 
-    const executeHostSubmit = () => {
+    const executeHostSubmit = async () => {
       setHostSubmitting(true);
       try {
-        const created = submitHostRegistration(hostForm);
+        const created = await submitHostAppDb({
+          ...hostForm,
+          fullName: hostForm.hostFullName,
+          propertyName: hostForm.propertyName,
+          generalLocation: hostForm.generalLocation,
+          propertyType: hostForm.propertyType,
+          intro: hostForm.hostIntro,
+          phoneOrEmail: hostForm.phoneOrEmail || user?.email,
+          hostLivesOnProperty: hostForm.hostLivesOnProperty,
+          rooms: hostForm.rooms,
+          beds: hostForm.beds,
+          maxGuests: hostForm.maxGuests,
+          bathroomPrivacy: hostForm.bathroomPrivacy,
+          nightlyRateINR: hostForm.nightlyRateINR,
+          cleaningOrCommunityFeeINR: hostForm.cleaningOrCommunityFeeINR,
+          mealOptions: {
+            breakfastIncluded: hostForm.breakfastIncluded,
+            dinnerAvailable: hostForm.dinnerAvailable,
+            dinnerCostPerPersonINR: hostForm.dinnerCostPerPersonINR,
+            description: hostForm.foodDescription
+          },
+          amenities: hostForm.amenities,
+          culturalActivities: hostForm.culturalActivities ? [hostForm.culturalActivities] : [],
+          photos: hostForm.photos,
+          houseRules: hostForm.houseRules ? [hostForm.houseRules] : [],
+          accessibility: hostForm.accessibility,
+          safetyFeatures: hostForm.safetyFeatures,
+          cancellationPolicy: hostForm.cancellationPolicy,
+          verification: {
+            govIdType: hostForm.govIdType,
+            govIdMaskedReference: hostForm.govIdMaskedReference,
+            ownershipDocReference: hostForm.ownershipDocReference
+          }
+        }, user);
+
+        // Also sync local storage wrapper
+        submitHostRegistration(hostForm);
+
         setHostSubmitSuccess(created);
         setHostSubmitting(false);
         setHostStep(1);
-        refreshAllData();
+        await refreshAllData();
         window.scrollTo({ top: 80, behavior: 'smooth' });
       } catch (err) {
         setHostSubmitting(false);
@@ -642,23 +851,44 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
 
   return (
     <div className="roots-stay-hub">
-      {/* 1. Header Banner */}
+      {/* 1. Stay Page Header Banner */}
       <section className="stay-hero-banner">
         <div className="container">
           <div className="stay-hero-content">
-            <div className="stay-badge-row">
-              <span className="section-tag">
-                <Home size={14} />
-                ROOTS Stay
+            {/* Welcoming Top Label & Quick Navigation */}
+            <div className="stay-top-breadcrumb-row">
+              {onBackToHome && (
+                <button
+                  type="button"
+                  className="stay-breadcrumb-back-btn"
+                  onClick={onBackToHome}
+                  title="Return to ROOTS homepage"
+                >
+                  <ChevronLeft size={15} />
+                  <span>Explore Home</span>
+                </button>
+              )}
+              <span className="stay-welcome-label">
+                <Sparkles size={13} className="sparkle-icon" />
+                LOCAL STAYS · REAL EXPERIENCES
               </span>
-              <span className="sample-badge">Community Homestay Network</span>
               <span className="stay-prototype-flag">Demonstration Prototype</span>
+              {onOpenPlanner && (
+                <button
+                  type="button"
+                  className="stay-planner-shortcut-btn"
+                  onClick={onOpenPlanner}
+                  title="Open AI itinerary planner"
+                >
+                  <Compass size={14} />
+                  <span>Trip Planner</span>
+                </button>
+              )}
             </div>
 
-            <h1 className="stay-hero-title">Stay in Living Homes, Not Impersonal Rooms</h1>
+            <h1 className="stay-hero-title">Stay Somewhere That Feels Like Home</h1>
             <p className="stay-hero-subtitle">
-              Ancestral homestays where hosts share oral folklore, farm-fresh recipes on banana leaves,
-              and reinvest directly into village conservation.
+              Discover local homestays, meet welcoming hosts, and experience places like a local.
             </p>
 
             {/* Prototype Transparency Notice */}
@@ -669,7 +899,7 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
               <div className="transparency-text">
                 <strong>Transparent Prototype Disclosures:</strong>
                 <p>
-                  Listings below are manually curated sample records with verified demonstration badges. 
+                  Listings below are curated demo records with verified demonstration badges. 
                   Host registration starts as <em>Pending Verification</em> until village and safety audit checks pass.
                   Exact home addresses are protected and never publicly exposed.
                 </p>
@@ -677,9 +907,11 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
             </div>
 
             {/* Hub Navigation Tabs */}
-            <div className="stay-nav-tabs">
+            <div className="stay-nav-tabs" role="tablist" aria-label="Stay Hub navigation">
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'discover'}
                 className={`stay-tab-btn ${activeTab === 'discover' ? 'active' : ''}`}
                 onClick={() => setActiveTab('discover')}
               >
@@ -689,6 +921,8 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
 
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'host'}
                 className={`stay-tab-btn ${activeTab === 'host' ? 'active' : ''}`}
                 onClick={() => setActiveTab('host')}
               >
@@ -698,6 +932,8 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
 
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'bookings'}
                 className={`stay-tab-btn ${activeTab === 'bookings' ? 'active' : ''}`}
                 onClick={() => setActiveTab('bookings')}
               >
@@ -707,6 +943,8 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
 
               <button
                 type="button"
+                role="tab"
+                aria-selected={activeTab === 'admin'}
                 className={`stay-tab-btn ${activeTab === 'admin' ? 'active' : ''}`}
                 onClick={() => setActiveTab('admin')}
               >
@@ -721,53 +959,90 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
         </div>
       </section>
 
-      {/* 2. TAB 1: DISCOVER STAYS */}
+      {/* 2. TAB 1: DISCOVER HOMESTAYS & DESTINATIONS */}
       {activeTab === 'discover' && (
         <section className="stay-discovery-section container">
-          {/* Search & Filter Toolbar */}
-          <div className="stay-filter-card card-white">
-            <div className="stay-search-primary-row">
-              <div className="search-input-group flex-1">
-                <Search size={18} className="search-icon" />
+          {/* 2A. Premium Rounded Search and Filter Panel */}
+          <div className="stay-search-panel-wrap card-white">
+            <form
+              className="stay-search-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const staysEl = document.getElementById('homes-with-a-story');
+                if (staysEl) staysEl.scrollIntoView({ behavior: 'smooth' });
+              }}
+            >
+              {/* Field 1: Destination or Location */}
+              <div className="stay-search-field field-destination">
+                <label htmlFor="stay-search-destination" className="search-field-label">
+                  <MapPin size={15} className="field-label-icon" />
+                  <span>Destination / Location</span>
+                </label>
+                <div className="search-input-wrap">
+                  <input
+                    id="stay-search-destination"
+                    type="text"
+                    placeholder="Where to? (e.g. Kerala, Spiti, Coorg, Hampi)..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="stay-search-input"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      className="search-clear-btn"
+                      onClick={() => setSearchQuery('')}
+                      aria-label="Clear destination search"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Field 2: Check-in Date */}
+              <div className="stay-search-field field-date">
+                <label htmlFor="stay-checkin-date" className="search-field-label">
+                  <Calendar size={15} className="field-label-icon" />
+                  <span>Check-in</span>
+                </label>
                 <input
-                  type="text"
-                  placeholder="Search village, property name, host, or cultural activity (e.g., clay pot, bamboo)..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="stay-text-input"
+                  id="stay-checkin-date"
+                  type="date"
+                  value={checkInDate}
+                  onChange={(e) => setCheckInDate(e.target.value)}
+                  className="stay-date-input"
+                  min={todayStr}
                 />
-                {searchQuery && (
-                  <button type="button" className="clear-btn" onClick={() => setSearchQuery('')}>
-                    <X size={14} />
-                  </button>
-                )}
               </div>
 
-              {/* Destination Filter */}
-              <div className="filter-select-group">
-                <MapPin size={16} />
-                <select
-                  value={destinationFilter}
-                  onChange={(e) => setDestinationFilter(e.target.value)}
-                  className="stay-select"
-                >
-                  <option value="all">All Destinations</option>
-                  <option value="varkala">Varkala & Periyar (Kerala)</option>
-                  <option value="meghalaya">Nongriat & Cherrapunji (Meghalaya)</option>
-                  <option value="spiti">Spiti Valley (Himachal)</option>
-                  <option value="coorg">Coorg Highlands (Karnataka)</option>
-                  <option value="hampi">Hampi & Anegundi (Karnataka)</option>
-                  <option value="wayanad">Wayanad (Kerala)</option>
-                </select>
+              {/* Field 3: Check-out Date */}
+              <div className="stay-search-field field-date">
+                <label htmlFor="stay-checkout-date" className="search-field-label">
+                  <Calendar size={15} className="field-label-icon" />
+                  <span>Check-out</span>
+                </label>
+                <input
+                  id="stay-checkout-date"
+                  type="date"
+                  value={checkOutDate}
+                  onChange={(e) => setCheckOutDate(e.target.value)}
+                  className="stay-date-input"
+                  min={checkInDate || todayStr}
+                />
               </div>
 
-              {/* Guests Count */}
-              <div className="filter-select-group">
-                <Users size={16} />
+              {/* Field 4: Guests Count */}
+              <div className="stay-search-field field-guests">
+                <label htmlFor="stay-guests-count" className="search-field-label">
+                  <Users size={15} className="field-label-icon" />
+                  <span>Guests</span>
+                </label>
                 <select
+                  id="stay-guests-count"
                   value={guestsFilter}
                   onChange={(e) => setGuestsFilter(Number(e.target.value))}
-                  className="stay-select"
+                  className="stay-guests-select"
                 >
                   <option value={1}>1 Guest</option>
                   <option value={2}>2 Guests</option>
@@ -775,98 +1050,185 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                   <option value={4}>4+ Guests</option>
                 </select>
               </div>
-            </div>
 
-            {/* Secondary Filter Chips Row */}
-            <div className="stay-secondary-filters-row">
-              <div className="filter-chips-list">
+              {/* Submit Search Button */}
+              <div className="stay-search-submit-wrap">
                 <button
-                  type="button"
-                  role="switch"
-                  aria-checked={filterBreakfastOnly}
-                  className={`chip-filter-btn ${filterBreakfastOnly ? 'active' : ''}`}
-                  onClick={() => setFilterBreakfastOnly(prev => !prev)}
+                  type="submit"
+                  className="btn-search-stays"
+                  aria-label="Search homestays"
                 >
-                  <Coffee size={14} />
-                  <span>Breakfast Included</span>
-                  <span className={`filter-switch-indicator ${filterBreakfastOnly ? 'on' : 'off'}`} aria-hidden="true" />
+                  <Search size={18} />
+                  <span>Search Stays</span>
                 </button>
+              </div>
+            </form>
 
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={filterWifiOnly}
-                  className={`chip-filter-btn ${filterWifiOnly ? 'active' : ''}`}
-                  onClick={() => setFilterWifiOnly(prev => !prev)}
-                >
-                  <Wifi size={14} />
-                  <span>Wi-Fi Available</span>
-                  <span className={`filter-switch-indicator ${filterWifiOnly ? 'on' : 'off'}`} aria-hidden="true" />
-                </button>
-
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={filterCulturalActivities}
-                  className={`chip-filter-btn ${filterCulturalActivities ? 'active' : ''}`}
-                  onClick={() => setFilterCulturalActivities(prev => !prev)}
-                >
-                  <Utensils size={14} />
-                  <span>Cultural Workshops</span>
-                  <span className={`filter-switch-indicator ${filterCulturalActivities ? 'on' : 'off'}`} aria-hidden="true" />
-                </button>
-
-                <select
-                  value={propertyTypeFilter}
-                  onChange={(e) => setPropertyTypeFilter(e.target.value)}
-                  className="chip-select-btn"
-                >
-                  <option value="all">All Property Styles</option>
-                  <option value="Ancestral Courtyard">Ancestral Courtyard</option>
-                  <option value="Bamboo Stilt Home">Bamboo Stilt Home</option>
-                  <option value="Heritage Farm Cottage">Heritage Farm Cottage</option>
-                  <option value="Mudbrick Mountain Retreat">Mudbrick Mountain Retreat</option>
-                  <option value="Village Homestay">Village Homestay</option>
-                </select>
+            {/* Category Filter Chips Bar */}
+            <div className="stay-chips-toolbar">
+              <div className="stay-category-chips-list" role="tablist" aria-label="Homestay categories">
+                {STAY_CATEGORIES.map((cat) => {
+                  const Icon = cat.icon;
+                  const isActive = categoryFilter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      className={`stay-category-chip ${isActive ? 'active' : ''}`}
+                      onClick={() => setCategoryFilter(cat.id)}
+                    >
+                      <Icon size={15} className="cat-chip-icon" />
+                      <span>{cat.label}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Price Slider */}
-              <div className="price-slider-group">
-                <span className="price-slider-label">
-                  Max: <strong>₹{maxPriceFilter.toLocaleString('en-IN')}</strong>/night
-                </span>
-                <input
-                  type="range"
-                  min="1000"
-                  max="4500"
-                  step="250"
-                  value={maxPriceFilter}
-                  onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
-                  className="stay-price-slider"
-                />
+              <div className="stay-more-filters-action">
+                <button
+                  type="button"
+                  className={`btn-toggle-more-filters ${showMoreFilters ? 'active' : ''}`}
+                  onClick={() => setShowMoreFilters(!showMoreFilters)}
+                  aria-expanded={showMoreFilters}
+                >
+                  <SlidersHorizontal size={14} />
+                  <span>{showMoreFilters ? 'Fewer Filters' : 'More Filters'}</span>
+                  <ChevronDown size={14} className={`chevron-indicator ${showMoreFilters ? 'open' : ''}`} />
+                </button>
               </div>
             </div>
+
+            {/* Expandable Advanced Filters Drawer */}
+            {showMoreFilters && (
+              <div className="stay-advanced-filters-panel">
+                <div className="advanced-filters-grid">
+                  <div className="advanced-filter-toggles">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={filterBreakfastOnly}
+                      className={`chip-filter-btn ${filterBreakfastOnly ? 'active' : ''}`}
+                      onClick={() => setFilterBreakfastOnly(prev => !prev)}
+                    >
+                      <Coffee size={14} />
+                      <span>Breakfast Included</span>
+                      <span className={`filter-switch-indicator ${filterBreakfastOnly ? 'on' : 'off'}`} aria-hidden="true" />
+                    </button>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={filterWifiOnly}
+                      className={`chip-filter-btn ${filterWifiOnly ? 'active' : ''}`}
+                      onClick={() => setFilterWifiOnly(prev => !prev)}
+                    >
+                      <Wifi size={14} />
+                      <span>Wi-Fi Available</span>
+                      <span className={`filter-switch-indicator ${filterWifiOnly ? 'on' : 'off'}`} aria-hidden="true" />
+                    </button>
+
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={filterCulturalActivities}
+                      className={`chip-filter-btn ${filterCulturalActivities ? 'active' : ''}`}
+                      onClick={() => setFilterCulturalActivities(prev => !prev)}
+                    >
+                      <Utensils size={14} />
+                      <span>Cultural Workshops</span>
+                      <span className={`filter-switch-indicator ${filterCulturalActivities ? 'on' : 'off'}`} aria-hidden="true" />
+                    </button>
+                  </div>
+
+                  <div className="advanced-filter-selects">
+                    <div className="select-with-label">
+                      <label htmlFor="filter-property-style">Property Style:</label>
+                      <select
+                        id="filter-property-style"
+                        value={propertyTypeFilter}
+                        onChange={(e) => setPropertyTypeFilter(e.target.value)}
+                        className="chip-select-btn"
+                      >
+                        <option value="all">All Styles</option>
+                        <option value="Ancestral Courtyard">Ancestral Courtyard</option>
+                        <option value="Bamboo Stilt Home">Bamboo Stilt Home</option>
+                        <option value="Heritage Farm Cottage">Heritage Farm Cottage</option>
+                        <option value="Mudbrick Mountain Retreat">Mudbrick Mountain Retreat</option>
+                        <option value="Village Homestay">Village Homestay</option>
+                      </select>
+                    </div>
+
+                    <div className="price-slider-group">
+                      <span className="price-slider-label">
+                        Max Rate: <strong>₹{maxPriceFilter.toLocaleString('en-IN')}</strong>/night
+                      </span>
+                      <input
+                        type="range"
+                        min="1000"
+                        max="4500"
+                        step="250"
+                        value={maxPriceFilter}
+                        onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
+                        className="stay-price-slider"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Stays Grid */}
-          <div className="stay-results-header">
-            <h3>Available Community Stays ({filteredStays.length})</h3>
-            <span className="results-subtext">
-              Showing approved authentic village stays. All coordinates approximate for community safety.
-            </span>
+          {/* 2B. Featured Stays: "Homes With a Story" */}
+          <div id="homes-with-a-story" className="stay-section-header">
+            <div className="section-title-wrap">
+              <span className="section-kicker">
+                <Heart size={13} />
+                HOMES WITH A STORY
+              </span>
+              <h2 className="stay-section-title">Homes With a Story</h2>
+              <p className="stay-section-subtitle">
+                Stay with local hosts, discover authentic regional architecture, and experience places like a local.
+              </p>
+            </div>
+
+            {(destinationFilter !== 'all' || categoryFilter !== 'all' || searchQuery.trim()) && (
+              <div className="active-filter-badge-row">
+                <span className="active-filter-tag">
+                  {destinationFilter !== 'all' && `Destination: ${destinationFilter}`}
+                  {destinationFilter !== 'all' && categoryFilter !== 'all' && ' • '}
+                  {categoryFilter !== 'all' && `Category: ${STAY_CATEGORIES.find(c => c.id === categoryFilter)?.label || categoryFilter}`}
+                  {searchQuery.trim() && ` • "${searchQuery}"`}
+                </span>
+                <button
+                  type="button"
+                  className="clear-all-filter-btn"
+                  onClick={() => {
+                    setDestinationFilter('all');
+                    setCategoryFilter('all');
+                    setSearchQuery('');
+                  }}
+                >
+                  <X size={13} />
+                  <span>Show All Stays</span>
+                </button>
+              </div>
+            )}
           </div>
 
           {filteredStays.length === 0 ? (
             <div className="stay-empty-state card-white">
               <AlertCircle size={40} color="#3478F6" />
               <h4>No Community Stays Match Your Filters</h4>
-              <p>Try broadening your price range, choosing another destination, or clearing active filters.</p>
+              <p>Try broadening your price range, choosing another category, or resetting active filters.</p>
               <button
                 type="button"
                 className="btn-secondary"
                 onClick={() => {
                   setSearchQuery('');
                   setDestinationFilter('all');
+                  setCategoryFilter('all');
                   setMaxPriceFilter(4500);
                   setFilterBreakfastOnly(false);
                   setFilterWifiOnly(false);
@@ -884,7 +1246,7 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
 
                 return (
                   <article key={stay.id} className="stay-card card-white">
-                    {/* Card Photo Header */}
+                    {/* Immersive Photo Header */}
                     <div className="stay-card-image-wrap">
                       <img
                         src={stay.photos[0]}
@@ -897,20 +1259,20 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                           <Check size={12} />
                           {stay.verification?.verificationBadge || 'Community Verified'}
                         </span>
-                        <span className="stay-sample-pill">Demo</span>
+                        <span className="stay-demo-pill">Demo</span>
                       </div>
 
                       <button
                         type="button"
                         className={`stay-bookmark-btn ${isBookmarked ? 'active' : ''}`}
                         onClick={() => toggleBookmark(stay.id)}
-                        aria-label="Bookmark homestay"
-                        title={isBookmarked ? 'Saved in prototype' : 'Bookmark stay'}
+                        aria-label={isBookmarked ? 'Remove saved homestay' : 'Save homestay to favourites'}
+                        title={isBookmarked ? 'Saved to favourites' : 'Save to favourites'}
                       >
-                        <Bookmark
+                        <Heart
                           size={16}
-                          fill={isBookmarked ? '#3478F6' : 'none'}
-                          color={isBookmarked ? '#3478F6' : '#FFFFFF'}
+                          fill={isBookmarked ? '#E11D48' : 'none'}
+                          color={isBookmarked ? '#E11D48' : '#FFFFFF'}
                         />
                       </button>
                     </div>
@@ -937,6 +1299,11 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                         <MapPin size={14} className="icon-blue" />
                         <span>{stay.generalLocation}</span>
                       </div>
+
+                      {/* Short Authentic Storytelling Description */}
+                      <p className="stay-story-snippet">
+                        "{stay.tagline || stay.mealOptions?.description || stay.host?.intro}"
+                      </p>
 
                       <div className="stay-capacity-row">
                         <span><Bed size={13} /> {stay.rooms} Rooms ({stay.beds} Beds)</span>
@@ -980,14 +1347,14 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                             onClick={() => setDetailStay(stay)}
                           >
                             <Eye size={14} />
-                            Details
+                            <span>Details</span>
                           </button>
                           <button
                             type="button"
                             className="btn-stay-request"
                             onClick={() => handleOpenBooking(stay)}
                           >
-                            Request Stay
+                            <span>Request Stay</span>
                           </button>
                         </div>
                       </div>
@@ -997,6 +1364,74 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
               })}
             </div>
           )}
+
+          {/* 2C. Explore Destinations Section: "Find Your Kind of Escape" */}
+          <section className="stay-escapes-section">
+            <div className="stay-section-header">
+              <div className="section-title-wrap">
+                <span className="section-kicker">
+                  <Compass size={13} />
+                  SCENIC DESTINATIONS
+                </span>
+                <h2 className="stay-section-title">Find Your Kind of Escape</h2>
+                <p className="stay-section-subtitle">
+                  From peaceful Kerala backwaters to misty Khasi living root bridges, find the scenic backdrop for your next authentic homestay.
+                </p>
+              </div>
+            </div>
+
+            <div className="escape-destinations-grid">
+              {ESCAPE_DESTINATIONS.map((dest) => (
+                <div
+                  key={dest.id}
+                  className="escape-dest-card"
+                  onClick={() => handleSelectEscapeDestination(dest)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelectEscapeDestination(dest);
+                    }
+                  }}
+                  aria-label={`Explore homestays in ${dest.name}`}
+                >
+                  <img
+                    src={dest.image}
+                    alt={dest.name}
+                    className="escape-dest-img"
+                    loading="lazy"
+                  />
+                  <div className="escape-dest-overlay" />
+
+                  <div className="escape-dest-badge-top">
+                    <span className="escape-location-pill">
+                      <MapPin size={12} />
+                      {dest.location}
+                    </span>
+                  </div>
+
+                  <div className="escape-dest-content">
+                    <h3 className="escape-dest-title">{dest.name}</h3>
+                    <p className="escape-dest-tagline">{dest.tagline}</p>
+
+                    <div className="escape-tags-list">
+                      {dest.tags.map((tag, idx) => (
+                        <span key={idx} className="escape-tag-chip">{tag}</span>
+                      ))}
+                    </div>
+
+                    <div className="escape-card-action">
+                      <span className="escape-btn-link">
+                        <span>Explore Stays</span>
+                        <ArrowRight size={14} />
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         </section>
       )}
 
@@ -2194,21 +2629,53 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
               ROOTS respects host autonomy. Bookings are only finalized when the host reviews the guest message
               and accepts the reservation. No automated payments or instant lock-ins.
             </p>
+
+            {/* Mode Selector Toggle: Traveler Inquiries vs Host Inbox */}
+            <div style={{ display: 'flex', gap: '10px', marginTop: '18px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={`btn btn-sm ${bookingViewMode === 'guest' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => {
+                  setBookingViewMode('guest');
+                  refreshAllData('guest');
+                }}
+              >
+                <User size={15} />
+                <span>My Inquiries (Traveler View)</span>
+              </button>
+              <button
+                type="button"
+                className={`btn btn-sm ${bookingViewMode === 'host' ? 'btn-primary' : 'btn-outline'}`}
+                onClick={() => {
+                  setBookingViewMode('host');
+                  refreshAllData('host');
+                }}
+              >
+                <Home size={15} />
+                <span>Host Inbox (Incoming Requests)</span>
+              </button>
+            </div>
           </div>
 
           <div className="bookings-list">
             {bookings.length === 0 ? (
               <div className="stay-empty-state card-white">
                 <Calendar size={36} color="#3478F6" />
-                <h4>No Active Stay Requests</h4>
-                <p>Browse our curated community stays and submit a stay request to experience local immersion.</p>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => setActiveTab('discover')}
-                >
-                  Browse Stays
-                </button>
+                <h4>{bookingViewMode === 'host' ? 'No Incoming Guest Requests' : 'No Active Stay Requests'}</h4>
+                <p>
+                  {bookingViewMode === 'host'
+                    ? 'When travellers request dates at your verified homestay, their reservations will appear here for your review and approval.'
+                    : 'Browse our curated community stays and submit a stay request to experience local immersion.'}
+                </p>
+                {bookingViewMode === 'guest' && (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => setActiveTab('discover')}
+                  >
+                    Browse Stays
+                  </button>
+                )}
               </div>
             ) : (
               bookings.map((booking) => {
@@ -2217,17 +2684,28 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                 const isDeclined = booking.status === 'declined';
                 const isCancelled = booking.status === 'cancelled';
 
+                const stayTitle = booking.stay_title || booking.stayTitle || 'Authentic Homestay';
+                const hostName = booking.host_name || booking.hostName || 'Local Host';
+                const guestName = booking.guest_name || booking.guestName || 'Traveller';
+                const guestContact = booking.guest_contact || booking.guestContact || '';
+                const checkIn = booking.check_in_date || booking.checkInDate || 'TBD';
+                const checkOut = booking.check_out_date || booking.checkOutDate || 'TBD';
+                const nights = booking.nights || 1;
+                const guestsCount = booking.guests_count || booking.guestsCount || 1;
+                const price = booking.total_price_inr || booking.totalPriceINR || 0;
+                const guestMessage = booking.guest_message || booking.guestMessage || '';
+
                 return (
                   <div key={booking.id} className="booking-card card-white">
                     <div className="booking-card-top">
                       <div>
                         <span className="booking-ref">Ref: {booking.id}</span>
-                        <h3 className="booking-stay-title">{booking.stayTitle}</h3>
+                        <h3 className="booking-stay-title">{stayTitle}</h3>
                         <div className="booking-host-row">
                           <Users size={14} />
-                          <span>Host: <strong>{booking.hostName}</strong></span>
+                          <span>Host: <strong>{hostName}</strong></span>
                           <span>•</span>
-                          <span>Guest: <strong>{booking.guestName}</strong></span>
+                          <span>Guest: <strong>{guestName}</strong></span>
                         </div>
                       </div>
 
@@ -2242,77 +2720,76 @@ export function RootsStayHub({ onBackToHome, onOpenPlanner }) {
                     <div className="booking-card-details-grid">
                       <div className="detail-col">
                         <span className="detail-label">Check-in</span>
-                        <span className="detail-val">{booking.checkInDate}</span>
+                        <span className="detail-val">{checkIn}</span>
                       </div>
                       <div className="detail-col">
                         <span className="detail-label">Check-out</span>
-                        <span className="detail-val">{booking.checkOutDate}</span>
+                        <span className="detail-val">{checkOut}</span>
                       </div>
                       <div className="detail-col">
                         <span className="detail-label">Duration & Guests</span>
-                        <span className="detail-val">{booking.nights} Nights • {booking.guestsCount} Guests</span>
+                        <span className="detail-val">{nights} Nights • {guestsCount} Guests</span>
                       </div>
                       <div className="detail-col">
                         <span className="detail-label">Total Calculated Price</span>
-                        <span className="detail-val price-highlight">₹{booking.totalPriceINR.toLocaleString('en-IN')}</span>
+                        <span className="detail-val price-highlight">₹{price.toLocaleString('en-IN')}</span>
                       </div>
                     </div>
 
-                    {booking.guestMessage && (
+                    {guestMessage && (
                       <div className="booking-message-box">
                         <strong>Guest Message:</strong>
-                        <p>"{booking.guestMessage}"</p>
+                        <p>"{guestMessage}"</p>
                       </div>
                     )}
 
                     {/* Interactive Workflow Buttons */}
                     <div className="booking-actions-row">
-                      {isPending && (
-                        <>
-                          <div className="host-demo-actions">
-                            <span className="demo-action-note">Simulate Host Actions:</span>
-                            <button
-                              type="button"
-                              className="btn-action-accept"
-                              onClick={() => {
-                                updateBookingStatus(booking.id, 'confirmed', 'Host accepted request.');
-                                refreshAllData();
-                              }}
-                            >
-                              <CheckCircle2 size={14} />
-                              Accept Request (Confirm)
-                            </button>
-                            <button
-                              type="button"
-                              className="btn-action-decline"
-                              onClick={() => {
-                                updateBookingStatus(booking.id, 'declined', 'Host unable to accommodate these dates.');
-                                refreshAllData();
-                              }}
-                            >
-                              <XCircle size={14} />
-                              Decline
-                            </button>
-                          </div>
-
+                      {isPending && bookingViewMode === 'host' && (
+                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                           <button
                             type="button"
-                            className="btn-action-cancel"
-                            onClick={() => {
-                              updateBookingStatus(booking.id, 'cancelled', 'Guest cancelled inquiry.');
-                              refreshAllData();
+                            className="btn-action-accept"
+                            onClick={async () => {
+                              await updateStayBookingDb(booking.id, 'confirmed', 'Host accepted request.', user);
+                              refreshAllData('host');
                             }}
                           >
-                            Cancel My Request
+                            <CheckCircle2 size={14} />
+                            Accept Request (Confirm)
                           </button>
-                        </>
+                          <button
+                            type="button"
+                            className="btn-action-decline"
+                            onClick={async () => {
+                              await updateStayBookingDb(booking.id, 'declined', 'Host unable to accommodate these dates.', user);
+                              refreshAllData('host');
+                            }}
+                          >
+                            <XCircle size={14} />
+                            Decline
+                          </button>
+                        </div>
+                      )}
+
+                      {isPending && bookingViewMode === 'guest' && (
+                        <button
+                          type="button"
+                          className="btn-action-cancel"
+                          onClick={async () => {
+                            await updateStayBookingDb(booking.id, 'cancelled', 'Guest cancelled inquiry.', user);
+                            refreshAllData('guest');
+                          }}
+                        >
+                          Cancel My Request
+                        </button>
                       )}
 
                       {isConfirmed && (
                         <div className="confirmed-booking-notice">
                           <CheckCircle2 size={16} color="#10B981" />
                           <span>
-                            Reservation Confirmed! The host will contact {booking.guestContact} with arrival directions and family dinner preparation times.
+                            Reservation Confirmed! Host will connect with {guestContact || guestName} with arrival directions and local dinner arrangements.
                           </span>
                         </div>
                       )}

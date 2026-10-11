@@ -48,9 +48,10 @@ import {
   reportContent,
   updateReportStatus
 } from '../data/communityHubData';
+import { submitDiary, submitDestinationTip, submitSafetyReport } from '../services/dbService';
 
 export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
-  const { requireAuth } = useAuth();
+  const { user, requireAuth } = useAuth();
   // Navigation / active tabs
   const [activeTab, setActiveTab] = useState('diaries'); // 'diaries' | 'places' | 'experiences' | 'moderation'
 
@@ -164,6 +165,13 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
   const handleReportSubmit = (reason, notes) => {
     if (!activeReportItem) return;
     reportContent(activeReportItem.type, activeReportItem.id, activeReportItem.title, reason, notes);
+    submitSafetyReport({
+      targetType: activeReportItem.type,
+      targetId: activeReportItem.id,
+      targetTitle: activeReportItem.title,
+      reason,
+      notes
+    }, user);
     reloadData();
     setActiveReportItem(null);
     showToast('Report submitted for community moderator review. Thank you for protecting the trail.');
@@ -1158,8 +1166,9 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
       {showCreateDiaryModal && (
         <CreateDiaryModal
           onClose={() => setShowCreateDiaryModal(false)}
-          onSave={(diaryData, isDraft) => {
+          onSave={async (diaryData, isDraft) => {
             saveCommunityDiary(diaryData, isDraft);
+            await submitDiary(diaryData, user);
             reloadData();
             setShowCreateDiaryModal(false);
             showToast(
@@ -1177,8 +1186,9 @@ export function RootsCommunityHub({ onBackToHome, onOpenPlanner }) {
       {showAddPlaceModal && (
         <AddPlaceModal
           onClose={() => setShowAddPlaceModal(false)}
-          onSave={(placeData, isDraft) => {
+          onSave={async (placeData, isDraft) => {
             saveCommunityPlace(placeData, isDraft);
+            await submitDestinationTip(placeData, user);
             reloadData();
             setShowAddPlaceModal(false);
             showToast(

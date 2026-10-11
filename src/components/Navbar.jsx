@@ -12,7 +12,8 @@ import {
   LogOut,
   LogIn,
   UserPlus,
-  ChevronDown
+  ChevronDown,
+  Shield
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -222,6 +223,17 @@ export function Navbar({
                       </button>
                       <button
                         type="button"
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          if (onNavigate) onNavigate('admin');
+                        }}
+                      >
+                        <Shield size={16} />
+                        <span>Admin Dashboard</span>
+                      </button>
+                      <button
+                        type="button"
                         className="user-dropdown-item danger-item"
                         onClick={async () => {
                           setUserMenuOpen(false);
@@ -275,6 +287,17 @@ export function Navbar({
                       >
                         <UserPlus size={16} />
                         <span>Create account</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="user-dropdown-item"
+                        onClick={() => {
+                          setUserMenuOpen(false);
+                          if (onNavigate) onNavigate('admin');
+                        }}
+                      >
+                        <Shield size={16} />
+                        <span>Admin Dashboard</span>
                       </button>
                     </div>
                   )}

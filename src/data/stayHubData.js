@@ -37,6 +37,7 @@ export const INITIAL_APPROVED_STAYS = [
     destinationId: "varkala",
     generalLocation: "Periyar Riverbank, Thattekad, Kerala (Approx. 4km from bird sanctuary)",
     propertyType: "Ancestral Courtyard",
+    tagline: "Slow-cooked clay pot karimeen fish & dawn canoe rows on the Periyar riverbank.",
     host: {
       name: "Eldho Varghese",
       ageVerified: true,
@@ -101,6 +102,7 @@ export const INITIAL_APPROVED_STAYS = [
     destinationId: "meghalaya",
     generalLocation: "Lower Nongriat Village, East Khasi Hills (At the foot of the 3,500 stone steps)",
     propertyType: "Bamboo Stilt Home",
+    tagline: "Living root bridge bio-architecture home with wild forest greens over wood hearth.",
     host: {
       name: "Byron Nongriat",
       ageVerified: true,
@@ -130,7 +132,7 @@ export const INITIAL_APPROVED_STAYS = [
     ],
     photos: [
       "https://images.unsplash.com/photo-1518457607834-6e8d80c183c5?auto=format&fit=crop&w=900&q=80",
-      "https://images.unsplash.com/photo-1626014303757-6466337a3465?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=800&q=80",
       "https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=800&q=80"
     ],
     accessibility: "Requires walking down 3,500 valley steps. Sturdy trekking footwear mandatory. Not wheelchair accessible.",
@@ -164,6 +166,7 @@ export const INITIAL_APPROVED_STAYS = [
     destinationId: "spiti",
     generalLocation: "Langza Village, Spiti Valley (Elevation 14,400 ft, near Golden Buddha)",
     propertyType: "Mudbrick Mountain Retreat",
+    tagline: "High-altitude mudbrick sanctuary with tsampa porridge & Himalayan dark-sky stargazing terrace.",
     host: {
       name: "Tenzin & Choden",
       ageVerified: true,
@@ -226,6 +229,7 @@ export const INITIAL_APPROVED_STAYS = [
     destinationId: "coorg",
     generalLocation: "Kakkabe Foothills, Kodagu, Karnataka (Near Tadiandamol base)",
     propertyType: "Heritage Farm Cottage",
+    tagline: "Canopy Arabica coffee estate. Warm Kodava akki roti feasts & private stream walks.",
     host: {
       name: "Rohan & Ananya Biddappa",
       ageVerified: true,
@@ -288,6 +292,7 @@ export const INITIAL_APPROVED_STAYS = [
     destinationId: "varkala",
     generalLocation: "Odayam Fishing Hamlet, Varkala (200m from uncrowded red cliff trail)",
     propertyType: "Ancestral Courtyard",
+    tagline: "Ancestral seaside Nallukettu courtyard with open skies, appams & quiet shoreline trails.",
     host: {
       name: "Subhadra Amma & Sreekanth",
       ageVerified: true,
@@ -350,6 +355,7 @@ export const INITIAL_APPROVED_STAYS = [
     destinationId: "hampi",
     generalLocation: "Anegundi Rural Village, Hampi North Bank (Adjacent to ancient stone aqueduct)",
     propertyType: "Village Homestay",
+    tagline: "Ancient stone veranda beside Tungabhadra river with sorghum rottis & evening folklore.",
     host: {
       name: "Shashikanth Kulkarni",
       ageVerified: true,
@@ -620,13 +626,23 @@ export const INITIAL_STAY_REPORTS = [
 // --- GETTERS & PERSISTENCE ---
 
 export function getAllStays() {
+  const customStays = (() => {
+    try {
+      const c = safeGetItem('roots_db_homestays');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  })();
   const stored = safeGetItem('roots_stays_v1');
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      const ids = new Set(customStays.map(s => s.id));
+      return [...customStays, ...parsed.filter(p => !ids.has(p.id))];
     } catch (e) {}
   }
-  return [...INITIAL_APPROVED_STAYS, ...INITIAL_PENDING_APPLICATIONS];
+  const ids = new Set(customStays.map(s => s.id));
+  const base = [...INITIAL_APPROVED_STAYS, ...INITIAL_PENDING_APPLICATIONS].filter(p => !ids.has(p.id));
+  return [...customStays, ...base];
 }
 
 export function getApprovedStays() {

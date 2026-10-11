@@ -18,11 +18,12 @@ import { RootsConnectHub } from './components/RootsConnectHub';
 import { RootsCommunityHub } from './components/RootsCommunityHub';
 import { RootsStayHub } from './components/RootsStayHub';
 import { RootsLingua } from './components/RootsLingua';
+import { AdminDashboard } from './components/AdminDashboard';
 import { generateItinerary } from './data/itineraryEngine';
 
 function AppContent() {
   const { requireAuth } = useAuth();
-  const [currentView, setCurrentView] = useState('home'); // 'home' | 'results' | 'connect' | 'community' | 'stay' | 'lingua'
+  const [currentView, setCurrentView] = useState('home'); // 'home' | 'results' | 'connect' | 'community' | 'stay' | 'lingua' | 'admin'
   const [activeItinerary, setActiveItinerary] = useState(null);
   const [plannerPrefill, setPlannerPrefill] = useState(null);
   const [prefilledDestination, setPrefilledDestination] = useState('');
@@ -235,7 +236,14 @@ function AppContent() {
       />
 
       <main>
-        {currentView === 'lingua' ? (
+        {currentView === 'admin' ? (
+          /* Centralized ROOTS Admin & Moderation Dashboard */
+          <AdminDashboard
+            onBackToHome={() => setCurrentView('home')}
+            onNavigateToStay={() => setCurrentView('stay')}
+            onNavigateToCommunity={() => setCurrentView('community')}
+          />
+        ) : currentView === 'lingua' ? (
           /* Dedicated ROOTS Lingua — Speak Like a Local View */
           <RootsLingua
             onBackToHome={() => setCurrentView('home')}

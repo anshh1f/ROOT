@@ -46,9 +46,9 @@ export const INITIAL_COMMUNITY_DIARIES = [
     destinationId: "meghalaya",
     tripDates: "Oct 18 – Oct 24, 2024",
     story: "The descent to Nongriat valley leaves your knees shaking, but the moment you step onto the double-decker root bridge woven across two centuries by Khasi ancestors, time pauses. The river beneath is transparent jade. We stayed at Byron's bamboo hut, eating boiled wild pumpkin greens, fermented bamboo shoots, and smoky rice while rain drummed on corrugated tin roofs.",
-    cover: "https://images.unsplash.com/photo-1626014303757-6466337a3465?auto=format&fit=crop&w=1000&q=80",
+    cover: "https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=1000&q=80",
     photos: [
-      "https://images.unsplash.com/photo-1626014303757-6466337a3465?auto=format&fit=crop&w=800&q=80",
+      "https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=800&q=80",
       "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=800&q=80"
     ],
     placesVisited: ["Nongriat Double Decker Bridge", "Rainbow Falls Basins", "Tyrna Village Steps"],
@@ -355,8 +355,8 @@ export const INITIAL_PENDING_SUBMISSIONS = [
     destinationId: "hampi",
     tripDates: "Aug 14 – Aug 18, 2026",
     story: "Crossing the Tungabhadra river during light monsoon drizzles. Rented a black bicycle for ₹80/day and wandered through ancient aqueducts, stopping at village temples where priests offered freshly broken coconut and sweet jaggery poha.",
-    cover: "https://images.unsplash.com/photo-1600100397608-f010f4438317?auto=format&fit=crop&w=800&q=80",
-    photos: ["https://images.unsplash.com/photo-1600100397608-f010f4438317?auto=format&fit=crop&w=600&q=80"],
+    cover: "https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=800&q=80",
+    photos: ["https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?auto=format&fit=crop&w=600&q=80"],
     placesVisited: ["Anegundi Fort Gate", "Sanapur Lake Rim", "Navabrindavana Island Viewpoint"],
     foodDiscovered: ["Banana Blossom Fritters", "Jaggery Poha Prasadam", "Tender Coconut Water"],
     activities: ["Bicycle touring", "Coracle river view", "Mythological folklore walk"],
@@ -424,13 +424,22 @@ function safeSetItem(key, value) {
 }
 
 export function getCommunityDiaries() {
+  const customDiaries = (() => {
+    try {
+      const c = safeGetItem('roots_db_travel_diaries');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  })();
   const stored = safeGetItem('roots_community_diaries_v2');
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      const ids = new Set(customDiaries.map(d => d.id));
+      return [...customDiaries, ...parsed.filter(p => !ids.has(p.id))];
     } catch (e) {}
   }
-  return INITIAL_COMMUNITY_DIARIES;
+  const ids = new Set(customDiaries.map(d => d.id));
+  return [...customDiaries, ...INITIAL_COMMUNITY_DIARIES.filter(p => !ids.has(p.id))];
 }
 
 export function saveCommunityDiary(newDiary, isDraft = false) {
@@ -465,13 +474,22 @@ export function saveCommunityDiary(newDiary, isDraft = false) {
 }
 
 export function getCommunityPlaces() {
+  const customPlaces = (() => {
+    try {
+      const c = safeGetItem('roots_db_destination_tips');
+      return c ? JSON.parse(c) : [];
+    } catch { return []; }
+  })();
   const stored = safeGetItem('roots_community_places_v2');
   if (stored) {
     try {
-      return JSON.parse(stored);
+      const parsed = JSON.parse(stored);
+      const ids = new Set(customPlaces.map(p => p.id));
+      return [...customPlaces, ...parsed.filter(p => !ids.has(p.id))];
     } catch (e) {}
   }
-  return INITIAL_COMMUNITY_PLACES;
+  const ids = new Set(customPlaces.map(p => p.id));
+  return [...customPlaces, ...INITIAL_COMMUNITY_PLACES.filter(p => !ids.has(p.id))];
 }
 
 export function saveCommunityPlace(newPlace, isDraft = false) {
